@@ -532,7 +532,7 @@ tr:hover td{background:#f8fafc}
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
       <span>💰 Saldo Projetado</span>
       <div style="display:flex;align-items:center;gap:6px">
-        <button onclick="projYearNav(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--text)">‹</button>
+        <button id="proj-prev-yr" onclick="projYearNav(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--text)">‹</button>
         <span id="proj-year-label" style="font-weight:700;font-size:14px;min-width:48px;text-align:center"></span>
         <button onclick="projYearNav(+1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--text)">›</button>
       </div>
@@ -3746,24 +3746,23 @@ function buildProjections(){
     tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)}`},enabled:ck.length>0}
   }}});
 
-  // Projected balance table — 12 months of projYear
+  // Projected balance table — 12 months of projYear (starting from app start month if current year)
   const balEl=document.getElementById('proj-balance-table');
   const yearLabelEl=document.getElementById('proj-year-label');
   if(yearLabelEl) yearLabelEl.textContent=projYear;
 
-  // For balance carry-over: sum all months before projYear
+  // App start = current month. Don't navigate before it.
+  const appStartYear=now.getFullYear();
+  const appStartMonth=now.getMonth(); // 0-based (June=5)
+  if(projYear<appStartYear){ projYear=appStartYear; projBuilt=false; buildProjections(); return; }
+  const prevBtn=document.getElementById('proj-prev-yr');
+  if(prevBtn) prevBtn.style.opacity=projYear<=appStartYear?'0.3':'1';
+
+  // Opening balance: current saldo, then carry forward all projected months before this year
   let runBal=getTotalSaldo();
-  // Add all net from months before the displayed year (already real or projected)
-  const firstMonthOfYear=`${projYear}-01`;
-  // Adjust opening balance: if projYear > current year, carry forward projected nets from current year up to projYear
-  // If projYear < current year, we show historical — opening balance would be different, but we use current saldo as base
-  // Simple approach: runBal = current saldo, then add/subtract all months before projYear that we haven't shown
-  const allPastMonths=[];
-  const startAdjust=new Date(now.getFullYear(),now.getMonth(),1);
-  if(projYear > now.getFullYear()){
-    // Add projected net for remaining months this year + all months of years between
+  if(projYear>appStartYear){
     const endAdjust=new Date(projYear,0,1);
-    for(let d2=new Date(startAdjust);d2<endAdjust;d2.setMonth(d2.getMonth()+1)){
+    for(let d2=new Date(appStartYear,appStartMonth,1);d2<endAdjust;d2.setMonth(d2.getMonth()+1)){
       const k2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
       const ms2=getMonthOutSummary(k2);
       const isReal2=byMonth[k2]&&k2<curMon;
@@ -3773,12 +3772,14 @@ function buildProjections(){
   }
 
   const balRows=[`<tr style="background:var(--primary)11;border-bottom:2px solid var(--primary)33">
-    <td colspan="5" style="font-weight:700;color:var(--primary)">💰 Saldo inicial ${projYear}${projYear===now.getFullYear()?` (actual)`:''}</td>
+    <td colspan="5" style="font-weight:700;color:var(--primary)">💰 Saldo no início de ${projYear===appStartYear?mLabel(curMon):projYear}</td>
     <td></td>
     <td style="text-align:right;font-weight:800;font-size:16px;color:var(--primary)">${fmt(runBal)}</td>
   </tr>`];
 
-  for(let m=0;m<12;m++){
+  // Month range: for the app start year, begin at appStartMonth; for other years, begin at Jan
+  const mStart=projYear===appStartYear?appStartMonth:0;
+  for(let m=mStart;m<12;m++){
     const k=`${projYear}-${String(m+1).padStart(2,'0')}`;
     const isReal=byMonth[k]&&k<curMon;
     const isCur=k===curMon;
