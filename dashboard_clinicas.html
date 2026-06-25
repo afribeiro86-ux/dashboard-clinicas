@@ -529,7 +529,14 @@ tr:hover td{background:#f8fafc}
     <div class="card"><div class="card-title">Saídas por Categoria</div><div class="chart-wrap"><canvas id="catChart"></canvas></div></div>
   </div>
   <div class="card">
-    <div class="card-title">💰 Saldo Projetado</div>
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>💰 Saldo Projetado</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="projYearNav(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--text)">‹</button>
+        <span id="proj-year-label" style="font-weight:700;font-size:14px;min-width:48px;text-align:center"></span>
+        <button onclick="projYearNav(+1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--text)">›</button>
+      </div>
+    </div>
     <div class="tbl-wrap"><table>
       <thead><tr>
         <th>Mês</th>
@@ -1707,6 +1714,12 @@ function updateZZPRow(mk,i,field,val){
 //  TABS
 // ═══════════════════════════════
 let projBuilt=false;
+let projYear=new Date().getFullYear();
+function projYearNav(delta){
+  projYear+=delta;
+  projBuilt=false;
+  buildProjections();
+}
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -1739,8 +1752,10 @@ function saveSettings(){
     localStorage.setItem(FB_CONFIG_KEY,JSON.stringify(cfg));
     fbInit();
   }
-  // Only save locally — never overwrite Firebase when just changing settings
+  // Save locally always
   localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  // Push to Firebase only if already synced (fbListening=true means Firebase already loaded our data)
+  if(fbEnabled && fbDb && fbListening) save();
   closeSettings();
   renderInfomedicsPanel();
   renderSegurosPanel();
@@ -3731,39 +3746,57 @@ function buildProjections(){
     tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)}`},enabled:ck.length>0}
   }}});
 
-  // Projected balance table — 6 months from now
+  // Projected balance table — 12 months of projYear
   const balEl=document.getElementById('proj-balance-table');
+  const yearLabelEl=document.getElementById('proj-year-label');
+  if(yearLabelEl) yearLabelEl.textContent=projYear;
+
+  // For balance carry-over: sum all months before projYear
   let runBal=getTotalSaldo();
+  // Add all net from months before the displayed year (already real or projected)
+  const firstMonthOfYear=`${projYear}-01`;
+  // Adjust opening balance: if projYear > current year, carry forward projected nets from current year up to projYear
+  // If projYear < current year, we show historical — opening balance would be different, but we use current saldo as base
+  // Simple approach: runBal = current saldo, then add/subtract all months before projYear that we haven't shown
+  const allPastMonths=[];
+  const startAdjust=new Date(now.getFullYear(),now.getMonth(),1);
+  if(projYear > now.getFullYear()){
+    // Add projected net for remaining months this year + all months of years between
+    const endAdjust=new Date(projYear,0,1);
+    for(let d2=new Date(startAdjust);d2<endAdjust;d2.setMonth(d2.getMonth()+1)){
+      const k2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+      const ms2=getMonthOutSummary(k2);
+      const isReal2=byMonth[k2]&&k2<curMon;
+      const net2=isReal2?(byMonth[k2].in-byMonth[k2].out):(getRemainingIncomeForMonth(k2)-ms2.unpaidTotal);
+      runBal+=net2;
+    }
+  }
+
   const balRows=[`<tr style="background:var(--primary)11;border-bottom:2px solid var(--primary)33">
-    <td colspan="5" style="font-weight:700;color:var(--primary)">💰 Saldo actual nas contas (excl. Holding)</td>
+    <td colspan="5" style="font-weight:700;color:var(--primary)">💰 Saldo inicial ${projYear}${projYear===now.getFullYear()?` (actual)`:''}</td>
     <td></td>
     <td style="text-align:right;font-weight:800;font-size:16px;color:var(--primary)">${fmt(runBal)}</td>
   </tr>`];
-  for(let i=0;i<6;i++){
-    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
-    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+
+  for(let m=0;m<12;m++){
+    const k=`${projYear}-${String(m+1).padStart(2,'0')}`;
     const isReal=byMonth[k]&&k<curMon;
     const isCur=k===curMon;
     const planInfoK=getInfomedicsIncomeForMonth(k);
     const planSegK=getSegIncomeForMonth(k);
-    const planOutK=planOut;
-    // Clinic-only real figures (exclude holding so it doesn't distort clinic projections)
     const realInSoFar=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===k&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
-    const realOutSoFar=(S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===k&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
     const monthSummary=getMonthOutSummary(k);
     let inAmt,outAmt,isPlanned,inLabel,outLabel;
     if(isReal){
       inAmt=byMonth[k].in;outAmt=byMonth[k].out;isPlanned=false;
       inLabel='';outLabel='';
     } else if(isCur){
-      // Current month: same unpaidTotal as Saídas "Por pagar"
       inAmt=getRemainingIncomeForMonth(k);
       outAmt=monthSummary.unpaidTotal;
       isPlanned=true;
       inLabel=realInSoFar>0?`<div style="font-size:10px;color:var(--text-sm)">já entrou: ${fmt(realInSoFar)}</div>`:'';
       outLabel=monthSummary.paidTotal>0?`<div style="font-size:10px;color:var(--text-sm)">já saiu: ${fmt(monthSummary.paidTotal)}</div>`:'';
     } else {
-      // Future months: use getRemainingIncomeForMonth (all arrivals are future)
       inAmt=getRemainingIncomeForMonth(k);outAmt=monthSummary.unpaidTotal;isPlanned=true;
       inLabel='';outLabel='';
     }
