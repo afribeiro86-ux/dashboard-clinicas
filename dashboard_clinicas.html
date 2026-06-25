@@ -774,6 +774,15 @@ tr:hover td{background:#f8fafc}
         </div>
       </div>
     </div>
+    <div class="modal-sep" style="height:1px;background:var(--border);margin:16px 0"></div>
+    <div class="settings-section">
+      <h4>💾 Backup de Dados</h4>
+      <div class="info-box" style="background:#fefce8;border-color:#fde047;color:#713f12">⚠️ Faz backups regulares para não perder dados se mudares de browser ou dispositivo.</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="exportData()" style="flex:1">⬇️ Exportar backup (.json)</button>
+        <button class="btn btn-ghost btn-sm" onclick="importData()" style="flex:1">⬆️ Importar backup (.json)</button>
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
@@ -1722,10 +1731,42 @@ function saveSettings(){
     localStorage.setItem(FB_CONFIG_KEY,JSON.stringify(cfg));
     fbInit();
   }
-  save(); closeSettings();
+  // Only save locally — never overwrite Firebase when just changing settings
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  closeSettings();
   renderInfomedicsPanel();
   renderSegurosPanel();
   if(calCurrentClinic) renderClinicCalendar();
+}
+
+function exportData(){
+  const payload={clinica:S, privado:P, exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='backup_clinicas_'+today()+'.json';
+  a.click();
+}
+function importData(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const payload=JSON.parse(ev.target.result);
+        if(!payload.clinica) throw new Error('Ficheiro inválido');
+        if(!confirm('Importar dados? Os dados actuais serão substituídos.')) return;
+        S=payload.clinica; load(); // run null guards
+        if(payload.privado){P=payload.privado; loadPrivado();}
+        save(); fbRenderAll();
+        alert('✅ Dados importados com sucesso!');
+      }catch(err){ alert('Erro ao importar: '+err.message); }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
 }
 
 function renderSettingsCategories(){
