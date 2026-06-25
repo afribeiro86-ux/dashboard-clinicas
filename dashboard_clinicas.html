@@ -1919,12 +1919,15 @@ function renderExpectedPayments(){
   const el=document.getElementById('info-payments-list');
   if(!el) return;
 
+  // Filter by ARRIVAL date month (not declaration month) — money arrives when it arrives
   const payments=[];
   INFOMEDICS_CLINICS.forEach(cId=>{
     const cal=S.infomedicsCalendar[cId]||{};
-    Object.keys(cal).filter(d=>d.startsWith(infoMonth)).forEach(declDate=>{
+    Object.keys(cal).forEach(declDate=>{
+      const arrivalDate=infomedicsArrival(declDate);
+      if(arrivalDate.slice(0,7)!==infoMonth) return; // arrival not in this month
       const chairs=getChairs(cId,declDate);
-      if(chairs>0) payments.push({cId,declDate,chairs,amount:getEntryAmount(cId,declDate),arrivalDate:infomedicsArrival(declDate)});
+      if(chairs>0) payments.push({cId,declDate,chairs,amount:getEntryAmount(cId,declDate),arrivalDate});
     });
   });
 
@@ -3645,7 +3648,7 @@ function buildProjections(){
     const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const isRealMonth=byMonth[k]&&k<curMon; // fully past month with real data
     const isCur=k===curMon;
-    const planInK=getPlannedIncome(k);
+    const planInK=getRemainingIncomeForMonth(k);
     const planOutK=planOut;
     fl.push(mLabel(k));
     if(isRealMonth){
