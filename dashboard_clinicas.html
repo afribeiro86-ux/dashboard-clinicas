@@ -1308,6 +1308,25 @@ function getRemainingIncomeForMonth(monthKey){
   });
   return total;
 }
+// Remaining (future) outgoings for a month — mirrors the Saídas calendar running balance logic:
+// only counts expenses whose due date >= today (past overdue items are assumed already in the bank balance)
+function getRemainingOutForMonth(monthKey){
+  const todayStr=today();
+  const [y,m]=monthKey.split('-').map(Number);
+  const daysInMonth=new Date(y,m,0).getDate();
+  let out=0;
+  (S.recurringOut||[]).forEach(r=>{
+    const entry=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
+    if(entry) return; // already paid — already in bank balance
+    const recDay=Math.min(r.day,daysInMonth);
+    const recDate=`${monthKey}-${String(recDay).padStart(2,'0')}`;
+    if(recDate>=todayStr) out+=getRecAmount(r.id,monthKey);
+  });
+  (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{
+    if(facCalDate(f)>=todayStr) out+=f.amount;
+  });
+  return out;
+}
 function getPlannedOut(){
   return (S.recurringOut||[]).reduce((s,r)=>s+r.amount,0);
 }
@@ -3781,7 +3800,7 @@ function buildProjections(){
       const k2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
       const ms2=getMonthOutSummary(k2);
       const isReal2=byMonth[k2]&&k2<curMon;
-      const net2=isReal2?(byMonth[k2].in-byMonth[k2].out):(getRemainingIncomeForMonth(k2)-ms2.unpaidTotal);
+      const net2=isReal2?(byMonth[k2].in-byMonth[k2].out):(getRemainingIncomeForMonth(k2)-getRemainingOutForMonth(k2));
       runBal+=net2;
     }
   }
@@ -3808,12 +3827,12 @@ function buildProjections(){
       inLabel='';outLabel='';
     } else if(isCur){
       inAmt=getRemainingIncomeForMonth(k);
-      outAmt=monthSummary.unpaidTotal;
+      outAmt=getRemainingOutForMonth(k); // future-only, matches calendar running balance
       isPlanned=true;
       inLabel=realInSoFar>0?`<div style="font-size:10px;color:var(--text-sm)">já entrou: ${fmt(realInSoFar)}</div>`:'';
       outLabel=monthSummary.paidTotal>0?`<div style="font-size:10px;color:var(--text-sm)">já saiu: ${fmt(monthSummary.paidTotal)}</div>`:'';
     } else {
-      inAmt=getRemainingIncomeForMonth(k);outAmt=monthSummary.unpaidTotal;isPlanned=true;
+      inAmt=getRemainingIncomeForMonth(k);outAmt=getRemainingOutForMonth(k);isPlanned=true;
       inLabel='';outLabel='';
     }
     const net=inAmt-outAmt;
