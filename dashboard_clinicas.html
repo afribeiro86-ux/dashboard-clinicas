@@ -1293,37 +1293,11 @@ function getPlannedIncome(monthKey){
 // only counts future arrivals (>= today) not yet received. Same logic as the Saídas calendar.
 function getRemainingIncomeForMonth(monthKey){
   const todayStr=today();
-  let total=0;
-  // Infomedics: scan ALL declaration dates, group by arrival date per clinic
-  INFOMEDICS_CLINICS.forEach(cId=>{
-    const cal=S.infomedicsCalendar[cId]||{};
-    const byArrival={};
-    Object.keys(cal).forEach(declDate=>{
-      const arr=infomedicsArrival(declDate);
-      if(arr.slice(0,7)!==monthKey) return; // arrival not in target month
-      if(!byArrival[arr]) byArrival[arr]=[];
-      byArrival[arr].push(declDate);
-    });
-    Object.entries(byArrival).forEach(([arrDate,declDates])=>{
-      if(arrDate<todayStr) return; // past arrival already in saldo
-      const anyReceived=declDates.some(dd=>getReceivedEntry(cId,dd));
-      if(!anyReceived) total+=declDates.reduce((s,dd)=>s+getEntryAmount(cId,dd),0);
-    });
-  });
-  // Seguros: future dates in monthKey with remaining balance
-  const segCal=(S.seguros&&S.seguros.calendar)||{};
-  Object.keys(segCal).filter(d=>d.startsWith(monthKey)&&d>=todayStr).forEach(segDate=>{
-    const e=getSegEntry(segDate); if(!e) return;
-    const rem=Math.max(0,(e.declared||e.planned||0)-segTotalReceived(segDate));
-    total+=rem;
-  });
+  let total=getInfomedicsIncomeForMonth(monthKey)+getSegIncomeForMonth(monthKey);
   // Outros: future entries with remaining balance
   const outCal=(S.outros&&S.outros.calendar)||{};
   Object.keys(outCal).filter(d=>d.startsWith(monthKey)&&d>=todayStr).forEach(d=>{
-    (outCal[d]||[]).forEach(e=>{
-      const rem=Math.max(0,e.planned-(e.received||0));
-      total+=rem;
-    });
+    (outCal[d]||[]).forEach(e=>{ total+=Math.max(0,e.planned-(e.received||0)); });
   });
   return total;
 }
@@ -1331,6 +1305,40 @@ function getPlannedOut(){
   return (S.recurringOut||[]).reduce((s,r)=>s+r.amount,0);
 }
 // Sum only the recurring expenses NOT yet paid in a given month
+function getInfomedicsIncomeForMonth(monthKey){
+  const todayStr=today();
+  let total=0;
+  INFOMEDICS_CLINICS.forEach(cId=>{
+    const cal=S.infomedicsCalendar[cId]||{};
+    const byArrival={};
+    Object.keys(cal).forEach(declDate=>{
+      const arr=infomedicsArrival(declDate);
+      if(arr.slice(0,7)!==monthKey) return;
+      if(!byArrival[arr]) byArrival[arr]=[];
+      byArrival[arr].push(declDate);
+    });
+    Object.entries(byArrival).forEach(([arrDate,declDates])=>{
+      if(arrDate<todayStr) return;
+      const anyReceived=declDates.some(dd=>getReceivedEntry(cId,dd));
+      if(!anyReceived) total+=declDates.reduce((s,dd)=>s+getEntryAmount(cId,dd),0);
+    });
+  });
+  return total;
+}
+function getSegIncomeForMonth(monthKey){
+  const todayStr=today();
+  let total=0;
+  const segCal=(S.seguros&&S.seguros.calendar)||{};
+  Object.keys(segCal).forEach(segDate=>{
+    const arrDate=segurosArrival(segDate);
+    if(arrDate.slice(0,7)!==monthKey) return;
+    if(arrDate<todayStr) return;
+    const e=getSegEntry(segDate); if(!e) return;
+    total+=Math.max(0,(e.declared||e.planned||0)-segTotalReceived(segDate));
+  });
+  return total;
+}
+
 // Single source of truth for monthly out summary — used by both Saídas calendar and Projections
 function getMonthOutSummary(monthKey){
   let paidRecurring=0, unpaidRecurring=0;
@@ -3272,14 +3280,15 @@ function renderOutCalendar(){
       }
     });
   });
-  // Seguros: remaining to receive per calendar date (uses declared if set, else planned)
+  // Seguros: use ARRIVAL date (declaration + delay) for income day map
   {
     const segCal=(S.seguros&&S.seguros.calendar)||{};
-    Object.keys(segCal).filter(d=>d.startsWith(mk)).forEach(segDate=>{
+    Object.keys(segCal).forEach(segDate=>{
+      const arrDate=segurosArrival(segDate);
       const e=getSegEntry(segDate); if(!e) return;
       const expected=(e.declared||e.planned||0);
       const rem=Math.max(0,expected-segTotalReceived(segDate));
-      if(rem>0) addIncome(segDate,rem);
+      if(rem>0) addIncome(arrDate,rem); // addIncome already filters by month and past dates
     });
   }
 
@@ -3712,8 +3721,8 @@ function buildProjections(){
     const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const isReal=byMonth[k]&&k<curMon;
     const isCur=k===curMon;
-    const planInfoK=getAllClinicsAmount(k);
-    const planSegK=getPlannedSegIncome(k);
+    const planInfoK=getInfomedicsIncomeForMonth(k);
+    const planSegK=getSegIncomeForMonth(k);
     const planOutK=planOut;
     // Clinic-only real figures (exclude holding so it doesn't distort clinic projections)
     const realInSoFar=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===k&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
