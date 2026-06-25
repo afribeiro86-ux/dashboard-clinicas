@@ -1715,6 +1715,7 @@ function updateZZPRow(mk,i,field,val){
 // ═══════════════════════════════
 let projBuilt=false;
 let projYear=new Date().getFullYear();
+let currentTab='entradas';
 function projYearNav(delta){
   projYear+=delta;
   projBuilt=false;
@@ -1725,13 +1726,13 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
-    const tab=t.dataset.tab;
-    document.getElementById('panel-'+tab).classList.add('active');
-    if(tab==='projections') buildProjections();
-    if(tab==='saidas'){ switchSaidaTab(currentSaidaTab); }
-    if(tab==='holding'){ renderHoldingPanel(); }
-    if(tab==='privado'){ renderPrivado(); }
-    if(tab==='entradas'){ switchEntradaTab(currentEntradaTab); }
+    currentTab=t.dataset.tab;
+    document.getElementById('panel-'+currentTab).classList.add('active');
+    if(currentTab==='projections') buildProjections();
+    if(currentTab==='saidas'){ switchSaidaTab(currentSaidaTab); }
+    if(currentTab==='holding'){ renderHoldingPanel(); }
+    if(currentTab==='privado'){ renderPrivado(); }
+    if(currentTab==='entradas'){ switchEntradaTab(currentEntradaTab); }
   });
 });
 
@@ -1741,25 +1742,39 @@ document.querySelectorAll('.tab').forEach(t=>{
 // openSettings is defined above (Firebase section)
 function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
 function saveSettings(){
-  S.settings.infomedicsPerChair=parseFloat(document.getElementById('set-chair-rate').value)||1300;
-  S.settings.segurosDelay=parseInt(document.getElementById('set-seg-delay').value)||14;
-  // Save Firebase config if provided
+  // 1. Read values — always save these regardless of Firebase
+  const newChairRate=parseFloat(document.getElementById('set-chair-rate').value);
+  const newSegDelay=parseInt(document.getElementById('set-seg-delay').value);
+  if(!isNaN(newChairRate)&&newChairRate>0) S.settings.infomedicsPerChair=newChairRate;
+  if(!isNaN(newSegDelay)&&newSegDelay>0) S.settings.segurosDelay=newSegDelay;
+
+  // 2. Firebase config — only process if the textarea was actually CHANGED (differs from stored)
   const fbRaw=document.getElementById('set-fb-config').value.trim();
-  if(fbRaw){
+  const fbStored=localStorage.getItem(FB_CONFIG_KEY)||'';
+  const fbChanged=fbRaw&&fbRaw!==fbStored;
+  if(fbChanged){
     const cfg=parseFirebaseConfig(fbRaw);
-    if(!cfg){ alert('Config inválida. Cola o bloco firebaseConfig copiado directamente do Firebase Console.'); return; }
-    if(!cfg.databaseURL){ alert('Config inválida: falta o campo "databaseURL". Certifica-te de que tens o Realtime Database activado no Firebase.'); return; }
+    if(!cfg){ alert('Config Firebase inválida.'); return; }
+    if(!cfg.databaseURL){ alert('Config Firebase inválida: falta "databaseURL".'); return; }
     localStorage.setItem(FB_CONFIG_KEY,JSON.stringify(cfg));
     fbInit();
   }
-  // Save locally always
+
+  // 3. Persist settings
   localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
-  // Push to Firebase only if already synced (fbListening=true means Firebase already loaded our data)
   if(fbEnabled && fbDb && fbListening) save();
+
+  // 4. Close modal
   closeSettings();
+
+  // 5. Re-render everything affected by the new values
+  projBuilt=false;
   renderInfomedicsPanel();
   renderSegurosPanel();
+  renderOutrosPanel();
   if(calCurrentClinic) renderClinicCalendar();
+  if(currentTab==='projections') buildProjections();
+  updateKpis();
 }
 
 function exportData(){
