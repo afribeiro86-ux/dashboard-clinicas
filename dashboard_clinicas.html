@@ -3001,20 +3001,32 @@ function addOutrosEntry(dateStr){
   S.outros.calendar[dateStr].push({id:uid(),sourceId:srcId,planned,received:null});
   save(); projBuilt=false; renderOutrosPanel();
 }
-function receiveOutrosEntry(dateStr,entryId){
-  const amt=parseFloat(document.getElementById('outros-recv-'+entryId).value)||0;
-  if(!amt) return;
+function startEditOutrosAmt(spanEl,dateStr,entryId){
   const entry=(S.outros.calendar[dateStr]||[]).find(e=>e.id===entryId);
   if(!entry) return;
-  entry.received=amt;
-  // Also create an S.entries record so it shows in history and projections
-  S.entries.push({id:uid(),date:dateStr,type:'entrada',amount:amt,
-    clinic:'',bank:'',category:'Outros',notes:entry._srcName||'',outrosEntryId:entryId});
+  const inp=document.createElement('input');
+  inp.type='number';inp.value=entry.planned.toFixed(2);inp.step='0.01';inp.min='0';
+  inp.style.cssText='width:80px;border:1px solid var(--primary);border-radius:5px;padding:2px 5px;font-size:12px;font-weight:700;color:var(--primary)';
+  const saveAmt=()=>{
+    const v=parseFloat(inp.value);
+    if(!isNaN(v)&&v>0){ entry.planned=v; save(); projBuilt=false; }
+    renderOutrosPanel();
+  };
+  inp.onblur=saveAmt;
+  inp.onkeydown=e=>{if(e.key==='Enter')saveAmt();if(e.key==='Escape')renderOutrosPanel();};
+  spanEl.replaceWith(inp); inp.focus(); inp.select();
+}
+function receiveOutrosEntry(dateStr,entryId){
+  const entry=(S.outros.calendar[dateStr]||[]).find(e=>e.id===entryId);
+  if(!entry) return;
+  const src=S.outros.sources.find(s=>s.id===entry.sourceId);
+  entry.received=entry.planned;
+  S.entries.push({id:uid(),date:dateStr,type:'entrada',amount:entry.planned,
+    clinic:'',bank:'',category:'Outros',notes:src?src.name:'',outrosEntryId:entryId});
   save(); projBuilt=false; renderOutrosPanel();
 }
 function deleteOutrosEntry(dateStr,entryId){
   if(!confirm('Apagar esta entrada?')) return;
-  // Remove linked S.entries record
   S.entries=S.entries.filter(e=>e.outrosEntryId!==entryId);
   S.outros.calendar[dateStr]=(S.outros.calendar[dateStr]||[]).filter(e=>e.id!==entryId);
   if(!S.outros.calendar[dateStr].length) delete S.outros.calendar[dateStr];
@@ -3110,40 +3122,41 @@ function renderOutrosPanel(){
 function renderOutrosEntriesList(){
   const el=document.getElementById('outros-entries-list'); if(!el) return;
   const cal=S.outros.calendar||{};
-  const monthEntries=Object.keys(cal)
-    .filter(d=>d.startsWith(outrosMonth))
-    .flatMap(d=>(cal[d]||[]).map(e=>({...e,date:d})))
-    .sort((a,b)=>a.date.localeCompare(b.date));
-
-  if(!monthEntries.length){
-    el.innerHTML='<p style="font-size:13px;color:var(--text-sm);font-style:italic">Nenhuma entrada registada para este mês.</p>';
+  // Group by date
+  const dates=Object.keys(cal).filter(d=>d.startsWith(outrosMonth)).sort();
+  if(!dates.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--text-sm);font-style:italic">Nenhuma entrada registada para este mês. Clica num dia do calendário para adicionar.</p>';
     return;
   }
-  el.innerHTML=monthEntries.map(e=>{
-    const src=S.outros.sources.find(s=>s.id===e.sourceId);
-    const idx=S.outros.sources.indexOf(src);
-    const col=getOutrosColor(idx>=0?idx:0);
-    const d=new Date(e.date+'T12:00:00');
-    const dateLabel=`${WEEKDAYS_PT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
-    const isReceived=e.received!==null;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:1px solid ${col}33;background:${col}09;margin-bottom:6px;flex-wrap:wrap">
-      <span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0"></span>
-      <span style="font-weight:700;font-size:12px;color:${col}">${src?src.name:'?'}</span>
-      <span style="font-size:12px;color:var(--text-sm)">${dateLabel}</span>
-      <span style="font-size:13px;font-weight:700;color:${isReceived?'var(--success)':'inherit'};margin-left:auto">
-        ${isReceived?'✓ '+fmt(e.received):fmt(e.planned)}
-      </span>
-      ${!isReceived?`
-        <div style="display:flex;gap:5px;align-items:center">
-          <input type="number" id="outros-recv-${e.id}" value="${e.planned.toFixed(2)}" step="0.01" min="0"
-            style="width:90px;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px"
-            onclick="event.stopPropagation()">
-          <button class="btn btn-success btn-sm" onclick="receiveOutrosEntry('${e.date}','${e.id}')" style="font-size:11px;padding:4px 9px">✓ Receber</button>
-        </div>`
-      :`<button class="btn btn-ghost btn-sm" onclick="unReceiveOutrosEntry('${e.date}','${e.id}')" style="font-size:11px;padding:3px 8px">anular</button>`}
-      <button onclick="deleteOutrosEntry('${e.date}','${e.id}')" style="background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:16px;padding:0 2px">×</button>
-    </div>`;
-  }).join('');
+  let html='';
+  dates.forEach(dateStr=>{
+    const entries=(cal[dateStr]||[]);
+    if(!entries.length) return;
+    const d=new Date(dateStr+'T12:00:00');
+    const dateLabel=`${WEEKDAYS_PT[d.getDay()]}, ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">${dateLabel}</div>`;
+    entries.forEach(e=>{
+      const src=S.outros.sources.find(s=>s.id===e.sourceId);
+      const idx=(S.outros.sources||[]).findIndex(s=>s.id===e.sourceId);
+      const col=getOutrosColor(idx>=0?idx:0);
+      const isReceived=e.received!==null&&e.received!==undefined;
+      const amtDisplay=isReceived
+        ?`<span style="font-weight:700;color:var(--success)">✓ ${fmt(e.received)}</span>`
+        :`<span class="outros-amt-editable" onclick="startEditOutrosAmt(this,'${dateStr}','${e.id}')"
+            title="Clica para editar" style="font-weight:700;cursor:pointer;border-bottom:1px dashed var(--primary)">${fmt(e.planned)}</span>`;
+      const actionBtn=isReceived
+        ?`<button class="btn btn-ghost btn-sm" onclick="unReceiveOutrosEntry('${dateStr}','${e.id}')" style="font-size:11px;padding:3px 8px;opacity:.7">anular</button>`
+        :`<button class="btn btn-success btn-sm" onclick="receiveOutrosEntry('${dateStr}','${e.id}')" style="font-size:11px;padding:4px 10px">+ Receber</button>`;
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:1px solid ${col}33;background:${col}09;margin-bottom:5px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0"></span>
+        <span style="font-weight:700;font-size:13px;color:${col};flex:1">${src?src.name:'?'}</span>
+        <span style="font-size:13px">${amtDisplay}</span>
+        ${actionBtn}
+        <button onclick="deleteOutrosEntry('${dateStr}','${e.id}')" style="background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:18px;line-height:1;padding:0 2px" title="Apagar">×</button>
+      </div>`;
+    });
+  });
+  el.innerHTML=html;
 }
 
 let outrosDayPopup=null;
