@@ -1761,7 +1761,7 @@ function saveSettings(){
   }
 
   // 3. Persist settings
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  localStorage.setItem(SK, JSON.stringify(S));
   if(fbEnabled && fbDb && fbListening) save();
 
   // 4. Close modal
