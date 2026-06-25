@@ -1968,7 +1968,10 @@ function renderExpectedPayments(){
         const recEntry=getReceivedEntry(g.cId,g.decls[0].declDate);
         const amtDisplay=grpReceived
           ?`<span style="font-weight:700;color:var(--success)">✓ ${fmt(recEntry?recEntry.amount:grpAmount)}</span>`
-          :`<span style="font-weight:700;color:inherit">${fmt(grpAmount)}</span>`;
+          :g.decls.map(p=>{
+              const isOverride=getEntry(p.cId,p.declDate)?.amount!=null;
+              return `<span class="info-amt-editable" onclick="startEditAmt(this,'${p.cId}','${p.declDate}')" title="Clica para editar" style="font-weight:700;cursor:pointer;border-bottom:1px dashed var(--primary);color:${isOverride?'var(--warn)':'inherit'}">${fmt(p.amount)}</span>`;
+            }).join('<span style="color:var(--text-sm);font-size:11px"> + </span>');
         const actionBtn=grpReceived
           ?`<button class="btn btn-ghost btn-sm" onclick="annulInfomedicsGroup('${g.cId}','${encDates}')" style="font-size:11px;padding:3px 8px">anular</button>`
           :`<button class="btn ${isPast||isToday?'btn-success':'btn-ghost'} btn-sm" onclick="receiveInfomedicsGroup('${g.cId}','${encDates}','${arrDate}')" style="font-size:11px;padding:3px 9px">+ Receber</button>`;
