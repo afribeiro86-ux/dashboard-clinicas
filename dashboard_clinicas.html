@@ -3291,6 +3291,16 @@ function renderOutCalendar(){
       if(rem>0) addIncome(arrDate,rem); // addIncome already filters by month and past dates
     });
   }
+  // Outros: entries with specific dates
+  {
+    const outCal=(S.outros&&S.outros.calendar)||{};
+    Object.keys(outCal).forEach(d=>{
+      (outCal[d]||[]).forEach(e=>{
+        const rem=Math.max(0,e.planned-(e.received||0));
+        if(rem>0) addIncome(d,rem);
+      });
+    });
+  }
 
   // Build running balance map: for today + future days with payments, show balance after payments
   // Includes expected income arriving on or before each day.
