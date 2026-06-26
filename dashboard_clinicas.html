@@ -566,66 +566,143 @@ tr:hover td{background:#f8fafc}
 
 <!-- ══════ HOLDING ══════ -->
 <div class="panel" id="panel-holding">
-  <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
     <div class="kpi blue"><div class="kpi-label">Saldo Holding</div><div class="kpi-val blue" id="hold-kpi-total">€ 0</div><div class="kpi-sub">ING</div></div>
-    <div class="kpi green"><div class="kpi-label">Entradas Este Mês</div><div class="kpi-val green" id="hold-kpi-in">€ 0</div><div class="kpi-sub" id="hold-kpi-in-sub">—</div></div>
-    <div class="kpi red"><div class="kpi-label">Saídas Este Mês</div><div class="kpi-val red" id="hold-kpi-out">€ 0</div><div class="kpi-sub" id="hold-kpi-out-sub">—</div></div>
+    <div class="kpi green"><div class="kpi-label">Entradas Mês Actual</div><div class="kpi-val green" id="hold-kpi-in">€ 0</div><div class="kpi-sub" id="hold-kpi-in-sub">—</div></div>
+    <div class="kpi red"><div class="kpi-label">Saídas Mês Actual</div><div class="kpi-val red" id="hold-kpi-out">€ 0</div><div class="kpi-sub" id="hold-kpi-out-sub">—</div></div>
+    <div class="kpi" style="--kpi-color:#7c3aed"><div class="kpi-label">Resultado Anual Est.</div><div class="kpi-val" id="hold-kpi-annual" style="color:#7c3aed">€ 0</div><div class="kpi-sub">previsão</div></div>
   </div>
-  <div class="card">
-    <div class="card-title">Conta Holding <span class="card-title-note">Clica para editar</span></div>
-    <div id="hold-acc-grid"></div>
+  <div class="subtab-bar">
+    <button class="subtab active" data-htab="saldo" onclick="switchHoldTab('saldo')">💰 Saldo</button>
+    <button class="subtab" data-htab="entradas" onclick="switchHoldTab('entradas')">📥 Entradas</button>
+    <button class="subtab" data-htab="saidas" onclick="switchHoldTab('saidas')">📤 Saídas</button>
+    <button class="subtab" data-htab="proj" onclick="switchHoldTab('proj')">📊 Projecções</button>
   </div>
-  <div class="card">
-    <div class="card-title">Registar Movimento</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div class="fg"><label>Data</label><input type="date" id="hold-date"></div>
-      <div class="fg"><label>Tipo</label>
-        <select id="hold-type">
-          <option value="entrada">Entrada</option>
-          <option value="saida">Saída</option>
-        </select>
+
+  <!-- ── Saldo ── -->
+  <div class="subtab-panel active" id="hold-sub-saldo">
+    <div class="card">
+      <div class="card-title">Conta Holding <span class="card-title-note">Clica para editar</span></div>
+      <div id="hold-acc-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Registar Movimento</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg"><label>Data</label><input type="date" id="hold-date"></div>
+        <div class="fg"><label>Tipo</label>
+          <select id="hold-type"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
+        </div>
+        <div class="fg"><label>Valor (€)</label><input type="number" id="hold-amount" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="fg" style="flex:2;min-width:140px"><label>Descrição</label><input type="text" id="hold-desc" placeholder="ex: dividendo, despesa..."></div>
+        <div class="fg"><label>Categoria</label>
+          <select id="hold-cat">
+            <option value="Dividendo">Dividendo</option><option value="Management Fee">Management Fee</option>
+            <option value="Transferência">Transferência</option><option value="Investimento">Investimento</option>
+            <option value="Despesa">Despesa</option><option value="Imposto">Imposto</option><option value="Outro">Outro</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addHoldingEntry()">+ Adicionar</button>
       </div>
-      <div class="fg"><label>Valor (€)</label><input type="number" id="hold-amount" step="0.01" min="0" placeholder="0.00"></div>
-      <div class="fg" style="flex:2;min-width:140px"><label>Descrição</label><input type="text" id="hold-desc" placeholder="ex: dividendo, despesa..."></div>
-      <div class="fg"><label>Categoria</label>
-        <select id="hold-cat">
-          <option value="Dividendo">Dividendo</option>
-          <option value="Transferência">Transferência</option>
-          <option value="Despesa">Despesa</option>
-          <option value="Imposto">Imposto</option>
-          <option value="Outro">Outro</option>
-        </select>
-      </div>
-      <button class="btn btn-primary" onclick="addHoldingEntry()">+ Adicionar</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Histórico Holding</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+        <tbody id="hold-entries-table"></tbody>
+      </table></div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">📋 Saídas Fixas Mensais</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end">
-      <div style="flex:2;min-width:130px">
-        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Descrição</label>
-        <input type="text" id="hold-fix-name" placeholder="ex: Accountant, verzekering..."
-          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+
+  <!-- ── Entradas ── -->
+  <div class="subtab-panel" id="hold-sub-entradas">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="holdIncomeNavMonth(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px">‹</button>
+          <span id="hold-income-month-label" style="font-weight:700;font-size:15px;min-width:120px;text-align:center"></span>
+          <button onclick="holdIncomeNavMonth(+1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px">›</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddHoldIncomeEntry()">＋ Adicionar entrada</button>
       </div>
-      <div style="flex:1;min-width:90px">
-        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Valor (€)</label>
-        <input type="number" id="hold-fix-amt" placeholder="0.00" step="0.01" min="0"
-          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      <div id="hold-income-list"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border);margin-top:8px">
+        <span style="font-size:13px;color:var(--text-sm)">Total recebido</span>
+        <span id="hold-income-total" style="font-size:16px;font-weight:800;color:var(--success)">€ 0</span>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="addHoldingFixed()" style="padding:7px 14px;margin-bottom:1px">＋</button>
     </div>
-    <div id="hold-fix-list"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border);margin-top:4px">
-      <span style="font-size:13px;font-weight:600;color:var(--text-sm)">Total mensal</span>
-      <span id="hold-fix-total" style="font-size:16px;font-weight:800;color:var(--danger)">€ 0</span>
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Fontes de Rendimento</span>
+        <button class="btn btn-ghost btn-sm" onclick="toggleHoldSources()">Gerir ▾</button>
+      </div>
+      <div id="hold-sources-mgmt" style="display:none;margin-top:8px">
+        <div id="hold-sources-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="text" id="hold-src-name" placeholder="Nome da fonte..." style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+          <button class="btn btn-primary btn-sm" onclick="addHoldIncomeSource()">＋</button>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">Histórico Holding</div>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead>
-      <tbody id="hold-entries-table"></tbody>
-    </table></div>
+
+  <!-- ── Saídas ── -->
+  <div class="subtab-panel" id="hold-sub-saidas">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="holdOutNavMonth(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px">‹</button>
+          <span id="hold-out-month-label" style="font-weight:700;font-size:15px;min-width:120px;text-align:center"></span>
+          <button onclick="holdOutNavMonth(+1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px">›</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleHoldFixedMgmt()">Gerir Recorrentes ▾</button>
+      </div>
+      <!-- Manage recurring out (collapsible) -->
+      <div id="hold-fix-mgmt" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:flex-end">
+          <div class="fg" style="min-width:80px"><label>Dia</label><input type="number" id="hold-fix-day" min="1" max="31" placeholder="1" style="width:100%"></div>
+          <div class="fg" style="flex:2;min-width:130px"><label>Descrição</label><input type="text" id="hold-fix-name" placeholder="ex: Accountant, verzekering..." style="width:100%"></div>
+          <div class="fg" style="min-width:100px"><label>Valor (€)</label><input type="number" id="hold-fix-amt" placeholder="0.00" step="0.01" min="0" style="width:100%"></div>
+          <button class="btn btn-primary btn-sm" onclick="addHoldingFixed()">＋</button>
+        </div>
+        <div id="hold-fix-list"></div>
+      </div>
+      <!-- Monthly expense calendar list -->
+      <div id="hold-out-cal-list"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border);margin-top:8px">
+        <span style="font-size:13px;color:var(--text-sm)">Total pago / por pagar</span>
+        <span id="hold-out-totals" style="font-size:13px;font-weight:700"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Projecções ── -->
+  <div class="subtab-panel" id="hold-sub-proj">
+    <div class="proj-section">
+      <div class="card"><div class="card-title">Entradas vs Saídas · 6 Meses</div><div class="chart-wrap"><canvas id="holdProjChart"></canvas></div></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;padding:20px">
+        <div><div style="font-size:12px;color:var(--text-sm);font-weight:600">Saldo Actual</div><div id="hold-proj-bal" style="font-size:22px;font-weight:800;color:var(--primary)">€ 0</div></div>
+        <div><div style="font-size:12px;color:var(--text-sm);font-weight:600">Média Entradas/mês</div><div id="hold-proj-avgin" style="font-size:18px;font-weight:700;color:var(--success)">€ 0</div></div>
+        <div><div style="font-size:12px;color:var(--text-sm);font-weight:600">Saídas Fixas/mês</div><div id="hold-proj-avgout" style="font-size:18px;font-weight:700;color:var(--danger)">€ 0</div></div>
+        <div><div style="font-size:12px;color:var(--text-sm);font-weight:600">Resultado Anual Est.</div><div id="hold-proj-annual" style="font-size:18px;font-weight:700;color:#7c3aed">€ 0</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>💰 Saldo Projetado Holding</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="holdProjYearNav(-1)" id="hold-proj-prev-yr" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px">‹</button>
+          <span id="hold-proj-year-label" style="font-weight:700;font-size:14px;min-width:48px;text-align:center"></span>
+          <button onclick="holdProjYearNav(+1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:14px">›</button>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Mês</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th>
+          <th style="text-align:right">Resultado</th><th style="text-align:right">Saldo Final</th>
+        </tr></thead>
+        <tbody id="hold-proj-table"></tbody>
+      </table></div>
+    </div>
   </div>
 </div>
 
@@ -1143,6 +1220,7 @@ let S = {
   // seguros.calendar: { "2026-06-01": 450 }  (per-day override; null/missing = use dailyDefault)
   seguros: { dailyDefault: 0, calendar: {} },
   holdingFixedOut: [],
+  holdingIncome: { sources: [], calendar: {} },
   techPayments: {}, materialPayments: {}, zzpPayments: {},
   outros: { sources: [], calendar: {} },
   settings: { infomedicsPerChair: 1300, outCategories: ['Salários','Huur / Renda','Leasing (DLL/BNP)','Belasting','Material Dentário','Seguro','Contabilidade','Outro'] }
@@ -1173,6 +1251,10 @@ function load(){
       if(!S.seguros) S.seguros={dailyDefault:0,calendar:{}};
       if(!S.seguros.calendar) S.seguros.calendar={};
       if(!Array.isArray(S.holdingFixedOut)) S.holdingFixedOut=[];
+      S.holdingFixedOut.forEach(r=>{if(!r.day) r.day=1;});
+      if(!S.holdingIncome) S.holdingIncome={sources:[],calendar:{}};
+      if(!S.holdingIncome.sources) S.holdingIncome.sources=[];
+      if(!S.holdingIncome.calendar) S.holdingIncome.calendar={};
       if(!S.techPayments) S.techPayments={};
       if(!S.outros) S.outros={sources:[],calendar:{}};
       if(!Array.isArray(S.outros.sources)) S.outros.sources=[];
@@ -3886,8 +3968,58 @@ function buildProjections(){
 // ═══════════════════════════════
 //  HOLDING
 // ═══════════════════════════════
+let holdTab='saldo';
+let holdIncomeMonth=curMonth();
+let holdOutMonth=curMonth();
+let holdProjYear=new Date().getFullYear();
+let holdProjBuilt=false;
+let holdSourcesOpen=false;
+let holdFixMgmtOpen=false;
+
+function migrateHoldingState(){
+  if(!Array.isArray(S.holdingFixedOut)) S.holdingFixedOut=[];
+  S.holdingFixedOut.forEach(r=>{if(!r.day) r.day=1;});
+  if(!S.holdingIncome) S.holdingIncome={sources:[],calendar:{}};
+  if(!S.holdingIncome.sources) S.holdingIncome.sources=[];
+  if(!S.holdingIncome.calendar) S.holdingIncome.calendar={};
+}
+
+function switchHoldTab(name){
+  holdTab=name;
+  document.querySelectorAll('[data-htab]').forEach(b=>b.classList.toggle('active',b.dataset.htab===name));
+  document.querySelectorAll('[id^="hold-sub-"]').forEach(p=>p.classList.remove('active'));
+  const panel=document.getElementById('hold-sub-'+name);
+  if(panel) panel.classList.add('active');
+  if(name==='saldo') renderHoldSaldo();
+  else if(name==='entradas') renderHoldEntradas();
+  else if(name==='saidas') renderHoldSaidas();
+  else if(name==='proj'){holdProjBuilt=false;renderHoldProjections();}
+}
+
 function renderHoldingPanel(){
-  // Balance card
+  migrateHoldingState();
+  // KPIs
+  const holdBal=S.balances['holding_ing']||0;
+  const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setEl('hold-kpi-total',fmt(holdBal));
+  const cm=curMonth();
+  const inRecv=(S.holdingIncome.calendar[cm]||[]).reduce((s,e)=>s+(e.received!=null?e.received:0),0);
+  const outPaid=holdOutPaidForMonth(cm);
+  const fixedTotal=(S.holdingFixedOut||[]).reduce((s,r)=>s+r.amount,0);
+  const annual=(inRecv-outPaid)*12;
+  setEl('hold-kpi-in',fmt(inRecv));
+  setEl('hold-kpi-in-sub',(S.holdingIncome.calendar[cm]||[]).filter(e=>e.received!=null).length+' recebidos');
+  setEl('hold-kpi-out',fmt(outPaid));
+  setEl('hold-kpi-out-sub',fmt(fixedTotal)+'/mês fixo');
+  setEl('hold-kpi-annual',fmt(annual));
+  // Render active subtab
+  if(holdTab==='saldo') renderHoldSaldo();
+  else if(holdTab==='entradas') renderHoldEntradas();
+  else if(holdTab==='saidas') renderHoldSaidas();
+  else if(holdTab==='proj'){holdProjBuilt=false;renderHoldProjections();}
+}
+
+function renderHoldSaldo(){
   const g=document.getElementById('hold-acc-grid');
   if(g){
     g.innerHTML='';
@@ -3909,41 +4041,7 @@ function renderHoldingPanel(){
       g.appendChild(row);
     }
   }
-  // KPIs
-  const holdBal=S.balances['holding_ing']||0;
-  const el=document.getElementById('hold-kpi-total');
-  if(el) el.textContent=fmt(holdBal);
-  const cm=curMonth();
-  const inE=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===cm&&e.clinic==='holding');
-  const outE=(S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===cm&&e.clinic==='holding');
-  const inSum=inE.reduce((s,e)=>s+e.amount,0);
-  const outSum=outE.reduce((s,e)=>s+e.amount,0);
-  const inEl=document.getElementById('hold-kpi-in'),outEl=document.getElementById('hold-kpi-out');
-  if(inEl) inEl.textContent=fmt(inSum);
-  if(outEl) outEl.textContent=fmt(outSum);
-  const inSub=document.getElementById('hold-kpi-in-sub'),outSub=document.getElementById('hold-kpi-out-sub');
-  if(inSub) inSub.textContent=inE.length+' registos';
-  if(outSub) outSub.textContent=outE.length+' registos';
-  // Fixed expenses list
-  if(!Array.isArray(S.holdingFixedOut))S.holdingFixedOut=[];
-  const fixList=document.getElementById('hold-fix-list');
-  if(fixList){
-    fixList.innerHTML=S.holdingFixedOut.length
-      ?S.holdingFixedOut.map(r=>`
-        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-          <span style="flex:1;font-size:13px;font-weight:600">${r.name}</span>
-          <span style="font-size:14px;font-weight:700;color:var(--danger)">${fmt(r.amount)}</span>
-          <button onclick="deleteHoldingFixed('${r.id}')"
-            style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button>
-        </div>`).join('')
-      :'<p style="font-size:13px;color:var(--text-sm);font-style:italic;margin-bottom:8px">Nenhuma saída fixa definida.</p>';
-    const fixTotal=S.holdingFixedOut.reduce((s,r)=>s+r.amount,0);
-    const ftEl=document.getElementById('hold-fix-total');
-    if(ftEl) ftEl.textContent=fmt(fixTotal);
-  }
-  // Init date input
   const hd=document.getElementById('hold-date');if(hd&&!hd.value) hd.value=today();
-  // Entries table
   const tbody=document.getElementById('hold-entries-table');
   if(!tbody) return;
   const holdEntries=(S.entries||[]).filter(e=>e.clinic==='holding').sort((a,b)=>b.date.localeCompare(a.date));
@@ -3962,6 +4060,275 @@ function renderHoldingPanel(){
     </tr>`;
   }).join('');
 }
+
+// ── Entradas ──
+function renderHoldEntradas(){
+  migrateHoldingState();
+  const mk=holdIncomeMonth;
+  const [y,m]=mk.split('-').map(Number);
+  const label=MONTHS_PT[m-1]+' '+y;
+  const lbl=document.getElementById('hold-income-month-label');
+  if(lbl) lbl.textContent=label;
+  const entries=S.holdingIncome.calendar[mk]||[];
+  const listEl=document.getElementById('hold-income-list');
+  if(!listEl) return;
+  if(!entries.length){
+    listEl.innerHTML=`<p style="font-size:13px;color:var(--text-sm);font-style:italic;padding:12px 0">Sem entradas para este mês. Clica em "+ Adicionar entrada".</p>`;
+  } else {
+    listEl.innerHTML=entries.map(e=>{
+      const src=S.holdingIncome.sources.find(s=>s.id===e.sourceId);
+      const name=e.name||(src?src.name:'Outro');
+      const isRecv=e.received!=null;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <span style="flex:2;font-size:13px;font-weight:600;min-width:120px">${name}</span>
+        <span style="font-size:13px;color:var(--text-sm)">Previsto: </span>
+        ${isRecv
+          ?`<span style="font-size:14px;font-weight:700;color:var(--text-sm)">${fmt(e.planned)}</span>`
+          :`<span onclick="holdEditIncomePlanned(this,'${mk}','${e.id}')" style="font-size:14px;font-weight:700;color:var(--primary);cursor:pointer;border-bottom:1px dashed var(--primary)">${fmt(e.planned)}</span>`
+        }
+        ${isRecv
+          ?`<span style="font-size:13px;font-weight:700;color:var(--success);margin-left:4px">✓ Recebido: ${fmt(e.received)}</span>
+            <button onclick="holdAnularIncome('${mk}','${e.id}')" class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--danger)">Anular</button>`
+          :`<button onclick="holdReceiveIncome('${mk}','${e.id}')" class="btn btn-primary btn-sm" style="font-size:12px">+ Receber</button>`
+        }
+        <button onclick="holdDeleteIncomeEntry('${mk}','${e.id}')" style="background:none;border:none;cursor:pointer;font-size:17px;color:var(--text-sm);margin-left:auto">×</button>
+      </div>`;
+    }).join('');
+  }
+  const received=entries.reduce((s,e)=>s+(e.received!=null?e.received:0),0);
+  const totEl=document.getElementById('hold-income-total');
+  if(totEl) totEl.textContent=fmt(received);
+  // Sources management
+  const srcList=document.getElementById('hold-sources-list');
+  if(srcList){
+    srcList.innerHTML=S.holdingIncome.sources.length
+      ?S.holdingIncome.sources.map(s=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="flex:1;font-size:13px">${s.name}</span>
+          <button onclick="holdDeleteSource('${s.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm)">×</button>
+        </div>`).join('')
+      :'<p style="font-size:12px;color:var(--text-sm);font-style:italic">Sem fontes.</p>';
+  }
+}
+
+function holdIncomeNavMonth(delta){
+  const [y,m]=holdIncomeMonth.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  holdIncomeMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  renderHoldEntradas();
+}
+function toggleHoldSources(){
+  holdSourcesOpen=!holdSourcesOpen;
+  const el=document.getElementById('hold-sources-mgmt');
+  if(el) el.style.display=holdSourcesOpen?'block':'none';
+}
+function addHoldIncomeSource(){
+  const inp=document.getElementById('hold-src-name');
+  const name=inp?inp.value.trim():'';
+  if(!name) return;
+  S.holdingIncome.sources.push({id:uid(),name});
+  inp.value='';
+  save();renderHoldEntradas();
+}
+function holdDeleteSource(id){
+  S.holdingIncome.sources=S.holdingIncome.sources.filter(s=>s.id!==id);
+  save();renderHoldEntradas();
+}
+function openAddHoldIncomeEntry(){
+  migrateHoldingState();
+  const mk=holdIncomeMonth;
+  // Build sources options
+  const srcOpts=S.holdingIncome.sources.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const html=`<div id="hold-income-add-form" style="background:var(--bg);border-radius:10px;padding:14px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <div class="fg" style="min-width:150px">
+      <label>Fonte</label>
+      <select id="hold-ia-src" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        ${srcOpts||''}
+        <option value="_custom">Outro (manual)</option>
+      </select>
+    </div>
+    <div class="fg" id="hold-ia-custom-wrap" style="min-width:130px;display:none">
+      <label>Nome</label>
+      <input type="text" id="hold-ia-custom" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" placeholder="Descrição...">
+    </div>
+    <div class="fg" style="min-width:100px">
+      <label>Valor Previsto (€)</label>
+      <input type="number" id="hold-ia-amt" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="confirmAddHoldIncomeEntry('${mk}')">Adicionar</button>
+    <button class="btn btn-ghost btn-sm" onclick="cancelAddHoldIncomeEntry()">Cancelar</button>
+  </div>`;
+  const listEl=document.getElementById('hold-income-list');
+  if(listEl){
+    const existing=document.getElementById('hold-income-add-form');
+    if(existing){existing.remove();return;}
+    listEl.insertAdjacentHTML('beforebegin',html);
+    const sel=document.getElementById('hold-ia-src');
+    if(sel) sel.onchange=()=>{
+      const cw=document.getElementById('hold-ia-custom-wrap');
+      if(cw) cw.style.display=sel.value==='_custom'?'block':'none';
+    };
+  }
+}
+function cancelAddHoldIncomeEntry(){
+  const f=document.getElementById('hold-income-add-form');if(f)f.remove();
+}
+function confirmAddHoldIncomeEntry(mk){
+  const srcSel=document.getElementById('hold-ia-src');
+  const srcId=srcSel?srcSel.value:null;
+  const customName=document.getElementById('hold-ia-custom')?document.getElementById('hold-ia-custom').value.trim():'';
+  const amt=parseFloat(document.getElementById('hold-ia-amt')?document.getElementById('hold-ia-amt').value:0)||0;
+  if(!amt){alert('Indica um valor previsto.');return;}
+  if(!S.holdingIncome.calendar[mk]) S.holdingIncome.calendar[mk]=[];
+  const src=(srcId&&srcId!=='_custom')?S.holdingIncome.sources.find(s=>s.id===srcId):null;
+  S.holdingIncome.calendar[mk].push({
+    id:uid(),
+    sourceId:src?src.id:null,
+    name:src?src.name:(customName||'Outro'),
+    planned:amt,
+    received:null
+  });
+  cancelAddHoldIncomeEntry();
+  save();projBuilt=false;holdProjBuilt=false;renderHoldEntradas();renderHoldingPanel();
+}
+function holdEditIncomePlanned(spanEl,mk,entryId){
+  const cal=S.holdingIncome.calendar[mk]||[];
+  const entry=cal.find(e=>e.id===entryId);
+  if(!entry) return;
+  const inp=document.createElement('input');
+  inp.type='number';inp.value=entry.planned.toFixed(2);inp.step='0.01';inp.min='0';
+  inp.style.cssText='width:80px;border:1px solid var(--primary);border-radius:5px;padding:2px 6px;font-size:14px;font-weight:700;color:var(--primary)';
+  const save2=()=>{
+    const v=parseFloat(inp.value);
+    if(!isNaN(v)&&v>0){entry.planned=v;save();projBuilt=false;holdProjBuilt=false;}
+    renderHoldEntradas();
+  };
+  inp.onblur=save2;
+  inp.onkeydown=e=>{if(e.key==='Enter')save2();if(e.key==='Escape')renderHoldEntradas();};
+  spanEl.replaceWith(inp);inp.focus();inp.select();
+}
+function holdReceiveIncome(mk,entryId){
+  const cal=S.holdingIncome.calendar[mk]||[];
+  const entry=cal.find(e=>e.id===entryId);
+  if(!entry) return;
+  entry.received=entry.planned;
+  const dateStr=mk+'-01';
+  S.entries.push({id:uid(),date:dateStr,type:'entrada',amount:entry.planned,
+    clinic:'holding',bank:'ING',account:'holding_ing',category:'Holding',
+    notes:entry.name,holdingIncomeId:entryId});
+  S.balances['holding_ing']=(S.balances['holding_ing']||0)+entry.planned;
+  save();projBuilt=false;holdProjBuilt=false;renderHoldEntradas();renderHoldingPanel();
+}
+function holdAnularIncome(mk,entryId){
+  const cal=S.holdingIncome.calendar[mk]||[];
+  const entry=cal.find(e=>e.id===entryId);
+  if(!entry) return;
+  if(!confirm('Anular este recebimento?')) return;
+  const linkedEntry=(S.entries||[]).find(e=>e.holdingIncomeId===entryId);
+  if(linkedEntry){
+    S.balances['holding_ing']=(S.balances['holding_ing']||0)-linkedEntry.amount;
+    S.entries=S.entries.filter(e=>e.id!==linkedEntry.id);
+  }
+  entry.received=null;
+  save();projBuilt=false;holdProjBuilt=false;renderHoldEntradas();renderHoldingPanel();
+}
+function holdDeleteIncomeEntry(mk,entryId){
+  const cal=S.holdingIncome.calendar[mk]||[];
+  const entry=cal.find(e=>e.id===entryId);
+  if(entry&&entry.received!=null){
+    if(!confirm('Este recebimento já foi registado. Eliminar na mesma?')) return;
+    holdAnularIncome(mk,entryId);
+  }
+  S.holdingIncome.calendar[mk]=(S.holdingIncome.calendar[mk]||[]).filter(e=>e.id!==entryId);
+  save();renderHoldEntradas();
+}
+
+// ── Saídas ──
+function holdOutPaidForMonth(mk){
+  return (S.entries||[]).filter(e=>e.holdingRecurringId&&mKey(e.date)===mk).reduce((s,e)=>s+e.amount,0);
+}
+function renderHoldSaidas(){
+  migrateHoldingState();
+  const mk=holdOutMonth;
+  const [y,m]=mk.split('-').map(Number);
+  const label=MONTHS_PT[m-1]+' '+y;
+  const lbl=document.getElementById('hold-out-month-label');
+  if(lbl) lbl.textContent=label;
+  const daysInMonth=new Date(y,m,0).getDate();
+  const calList=document.getElementById('hold-out-cal-list');
+  if(!calList) return;
+  const fixed=S.holdingFixedOut||[];
+  if(!fixed.length){
+    calList.innerHTML=`<p style="font-size:13px;color:var(--text-sm);font-style:italic;padding:12px 0">Sem saídas fixas definidas. Clica em "Gerir Recorrentes".</p>`;
+    const totEl=document.getElementById('hold-out-totals');if(totEl) totEl.textContent='';
+    return;
+  }
+  // Sort by day
+  const sorted=[...fixed].sort((a,b)=>(a.day||1)-(b.day||1));
+  let paid=0,unpaid=0;
+  calList.innerHTML=sorted.map(r=>{
+    const day=Math.min(r.day||1,daysInMonth);
+    const dateStr=`${mk}-${String(day).padStart(2,'0')}`;
+    const entry=(S.entries||[]).find(e=>e.holdingRecurringId===r.id&&mKey(e.date)===mk);
+    const isPaid=!!entry;
+    if(isPaid) paid+=r.amount; else unpaid+=r.amount;
+    const d=new Date(y,m-1,day);
+    const dayLabel=`${day} ${MONTHS_SHORT[d.getMonth()]}`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <span style="width:70px;font-size:12px;font-weight:600;color:var(--text-sm)">${dayLabel}</span>
+      <span style="flex:2;font-size:13px;font-weight:600;min-width:120px">${r.name}</span>
+      <span style="font-size:14px;font-weight:700;color:var(--danger)">${fmt(r.amount)}</span>
+      ${isPaid
+        ?`<span style="font-size:12px;font-weight:700;color:var(--success);padding:3px 10px;background:#dcfce7;border-radius:10px">✓ Pago</span>
+          <button onclick="holdAnularOut('${r.id}','${mk}')" class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--danger)">Anular</button>`
+        :`<button onclick="holdPayOut('${r.id}','${mk}','${dateStr}')" class="btn btn-primary btn-sm" style="font-size:12px;background:var(--danger)">Pagar</button>`
+      }
+    </div>`;
+  }).join('');
+  const totEl=document.getElementById('hold-out-totals');
+  if(totEl) totEl.innerHTML=`<span style="color:var(--success)">${fmt(paid)} pago</span>&nbsp;·&nbsp;<span style="color:var(--danger)">${fmt(unpaid)} por pagar</span>`;
+  // Fixed mgmt list
+  const fixList=document.getElementById('hold-fix-list');
+  if(fixList){
+    fixList.innerHTML=fixed.length
+      ?sorted.map(r=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <span style="width:55px;font-size:12px;color:var(--text-sm)">Dia ${r.day||1}</span>
+          <span style="flex:1;font-size:13px;font-weight:600">${r.name}</span>
+          <span style="font-size:14px;font-weight:700;color:var(--danger)">${fmt(r.amount)}</span>
+          <button onclick="deleteHoldingFixed('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm)">×</button>
+        </div>`).join('')
+      :'<p style="font-size:13px;color:var(--text-sm);font-style:italic">Sem saídas fixas.</p>';
+  }
+}
+function holdOutNavMonth(delta){
+  const [y,m]=holdOutMonth.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  holdOutMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  renderHoldSaidas();
+}
+function toggleHoldFixedMgmt(){
+  holdFixMgmtOpen=!holdFixMgmtOpen;
+  const el=document.getElementById('hold-fix-mgmt');
+  if(el) el.style.display=holdFixMgmtOpen?'block':'none';
+}
+function holdPayOut(recurringId,mk,dateStr){
+  const r=(S.holdingFixedOut||[]).find(x=>x.id===recurringId);
+  if(!r) return;
+  S.entries.push({id:uid(),date:dateStr,type:'saida',amount:r.amount,
+    clinic:'holding',bank:'ING',account:'holding_ing',category:'Holding',
+    notes:r.name,holdingRecurringId:recurringId});
+  S.balances['holding_ing']=(S.balances['holding_ing']||0)-r.amount;
+  save();projBuilt=false;holdProjBuilt=false;renderHoldSaidas();renderHoldingPanel();
+}
+function holdAnularOut(recurringId,mk){
+  const entry=(S.entries||[]).find(e=>e.holdingRecurringId===recurringId&&mKey(e.date)===mk);
+  if(!entry||!confirm('Anular este pagamento?')) return;
+  S.balances['holding_ing']=(S.balances['holding_ing']||0)+entry.amount;
+  S.entries=S.entries.filter(e=>e.id!==entry.id);
+  save();projBuilt=false;holdProjBuilt=false;renderHoldSaidas();renderHoldingPanel();
+}
+
 function addHoldingEntry(){
   const date=document.getElementById('hold-date').value;
   const type=document.getElementById('hold-type').value;
@@ -3973,10 +4340,10 @@ function addHoldingEntry(){
   S.entries.push({id:uid(),date,type,amount,clinic:'holding',bank:'ING',account:'holding_ing',category,notes});
   const delta=type==='entrada'?amount:-amount;
   S.balances['holding_ing']=(S.balances['holding_ing']||0)+delta;
-  save();
+  save();projBuilt=false;holdProjBuilt=false;
   document.getElementById('hold-amount').value='';
   document.getElementById('hold-desc').value='';
-  renderHoldingPanel();
+  renderHoldSaldo();renderHoldingPanel();
 }
 function deleteHoldingEntry(id){
   const e=(S.entries||[]).find(x=>x.id===id);
@@ -3984,22 +4351,128 @@ function deleteHoldingEntry(id){
   const delta=e.type==='entrada'?-e.amount:e.amount;
   S.balances['holding_ing']=(S.balances['holding_ing']||0)+delta;
   S.entries=S.entries.filter(x=>x.id!==id);
-  save();renderHoldingPanel();
+  save();projBuilt=false;holdProjBuilt=false;renderHoldSaldo();renderHoldingPanel();
 }
 function addHoldingFixed(){
   const name=document.getElementById('hold-fix-name').value.trim();
   const amount=parseFloat(document.getElementById('hold-fix-amt').value)||0;
+  const day=parseInt(document.getElementById('hold-fix-day').value)||1;
   if(!name||!amount){alert('Preenche a descrição e o valor.');return;}
   if(!Array.isArray(S.holdingFixedOut))S.holdingFixedOut=[];
-  S.holdingFixedOut.push({id:uid(),name,amount});
-  save();
+  S.holdingFixedOut.push({id:uid(),name,amount,day:Math.max(1,Math.min(31,day))});
+  save();projBuilt=false;holdProjBuilt=false;
   document.getElementById('hold-fix-name').value='';
   document.getElementById('hold-fix-amt').value='';
-  renderHoldingPanel();
+  document.getElementById('hold-fix-day').value='';
+  renderHoldSaidas();renderHoldingPanel();
 }
 function deleteHoldingFixed(id){
   S.holdingFixedOut=(S.holdingFixedOut||[]).filter(r=>r.id!==id);
-  save();renderHoldingPanel();
+  save();projBuilt=false;holdProjBuilt=false;renderHoldSaidas();renderHoldingPanel();
+}
+
+// ── Projecções Holding ──
+let holdProjChart=null;
+function holdProjYearNav(delta){
+  const appStartYear=new Date().getFullYear();
+  holdProjYear=Math.max(appStartYear,holdProjYear+delta);
+  holdProjBuilt=false;renderHoldProjections();
+}
+function getHoldPlannedIn(mk){
+  return (S.holdingIncome.calendar[mk]||[]).reduce((s,e)=>s+(e.received!=null?e.received:e.planned),0);
+}
+function getHoldFixedOut(mk){
+  // Full planned (for future months); actual paid for past
+  const paid=holdOutPaidForMonth(mk);
+  if(paid>0) return paid;
+  const cm=curMonth();
+  if(mk<cm) return 0; // past — nothing paid, nothing to show
+  return (S.holdingFixedOut||[]).reduce((s,r)=>s+r.amount,0);
+}
+function renderHoldProjections(){
+  migrateHoldingState();
+  if(holdProjBuilt) return;
+  holdProjBuilt=true;
+  const now=new Date();
+  const appStartYear=now.getFullYear();
+  const appStartMonth=now.getMonth();
+  if(holdProjYear<appStartYear){holdProjYear=appStartYear;holdProjBuilt=false;renderHoldProjections();return;}
+  const prevBtn=document.getElementById('hold-proj-prev-yr');
+  if(prevBtn) prevBtn.style.opacity=holdProjYear<=appStartYear?'0.3':'1';
+  const yrLbl=document.getElementById('hold-proj-year-label');
+  if(yrLbl) yrLbl.textContent=holdProjYear;
+  // KPIs
+  const holdBal=S.balances['holding_ing']||0;
+  const cm=curMonth();
+  const fixTotal=(S.holdingFixedOut||[]).reduce((s,r)=>s+r.amount,0);
+  const recentIn=[-2,-1,0].map(d=>{const nd=new Date(now.getFullYear(),now.getMonth()+d,1);return getHoldPlannedIn(`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,'0')}`);});
+  const avgIn=recentIn.reduce((s,v)=>s+v,0)/3||getHoldPlannedIn(cm);
+  const annual=(avgIn-fixTotal)*12;
+  const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setEl('hold-proj-bal',fmt(holdBal));
+  setEl('hold-proj-avgin',fmt(avgIn));
+  setEl('hold-proj-avgout',fmt(fixTotal));
+  setEl('hold-proj-annual',fmt(annual));
+  // Table
+  const mStart=holdProjYear===appStartYear?appStartMonth:0;
+  let runBal=holdBal;
+  if(holdProjYear>appStartYear){
+    for(let d2=new Date(appStartYear,appStartMonth,1);d2<new Date(holdProjYear,0,1);d2.setMonth(d2.getMonth()+1)){
+      const k2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+      runBal+=getHoldPlannedIn(k2)-getHoldFixedOut(k2);
+    }
+  }
+  const rows=[];
+  const chartLabels=[],chartIn=[],chartOut=[];
+  for(let m2=mStart;m2<12;m2++){
+    const k=`${holdProjYear}-${String(m2+1).padStart(2,'0')}`;
+    const inAmt=getHoldPlannedIn(k);
+    const outAmt=getHoldFixedOut(k);
+    const net=inAmt-outAmt;
+    runBal+=net;
+    const isPlanned=k>=cm;
+    rows.push({k,m2,inAmt,outAmt,net,runBal,isPlanned});
+    chartLabels.push(MONTHS_SHORT[m2]);chartIn.push(inAmt);chartOut.push(outAmt);
+  }
+  const tbody=document.getElementById('hold-proj-table');
+  if(tbody){
+    tbody.innerHTML=rows.map(r=>{
+      const negCls=r.net<0?'color:var(--danger)':'color:var(--success)';
+      const balCls=r.runBal<0?'color:var(--danger)':'color:var(--primary)';
+      const opacity=r.isPlanned?1:0.6;
+      return `<tr style="opacity:${opacity}">
+        <td style="font-weight:600">${MONTHS_PT[r.m2]}</td>
+        <td style="text-align:right;color:var(--success)">${r.inAmt>0?fmt(r.inAmt):'—'}</td>
+        <td style="text-align:right;color:var(--danger)">${r.outAmt>0?fmt(r.outAmt):'—'}</td>
+        <td style="text-align:right;${negCls};font-weight:700">${r.net>=0?'+':''}${fmt(r.net)}</td>
+        <td style="text-align:right;${balCls};font-weight:800">${fmt(r.runBal)}</td>
+      </tr>`;
+    }).join('');
+  }
+  // Chart (6 months from now)
+  const now6=new Date(now.getFullYear(),now.getMonth(),1);
+  const c6L=[],c6In=[],c6Out=[];
+  for(let i=0;i<6;i++){
+    const d=new Date(now6.getFullYear(),now6.getMonth()+i,1);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    c6L.push(MONTHS_SHORT[d.getMonth()]);
+    c6In.push(getHoldPlannedIn(k));
+    c6Out.push((S.holdingFixedOut||[]).reduce((s,r)=>s+r.amount,0));
+  }
+  const canvas=document.getElementById('holdProjChart');
+  if(!canvas) return;
+  if(holdProjChart){holdProjChart.destroy();holdProjChart=null;}
+  const ctx=canvas.getContext('2d');
+  holdProjChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:c6L,datasets:[
+      {label:'Entradas',data:c6In,backgroundColor:'rgba(34,197,94,0.7)',borderRadius:6},
+      {label:'Saídas',data:c6Out,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:6}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>'€'+Math.round(v).toLocaleString('nl-NL')}}}}
+  });
+}
 }
 
 // ═══════════════════════════════
