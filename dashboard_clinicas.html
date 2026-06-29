@@ -554,9 +554,9 @@ tr:hover td{background:#f8fafc}
   <!-- Scenario selector + report button -->
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
     <span style="font-size:13px;color:var(--text-sm);font-weight:600">Cenário:</span>
-    <button class="scenario-btn" id="scen-pessimista" onclick="setScenario(0.85)">📉 −15%</button>
+    <button class="scenario-btn" id="scen-pessimista" onclick="setScenario(0.90)">📉 −10%</button>
     <button class="scenario-btn active" id="scen-base" onclick="setScenario(1.0)">📊 Base</button>
-    <button class="scenario-btn" id="scen-optimista" onclick="setScenario(1.15)">📈 +15%</button>
+    <button class="scenario-btn" id="scen-optimista" onclick="setScenario(1.10)">📈 +10%</button>
     <span id="scen-label" style="font-size:12px;color:var(--text-sm);margin-left:4px"></span>
     <button onclick="exportMonthlyReport()" style="margin-left:auto;background:var(--text-sm);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">📄 Relatório Mensal</button>
   </div>
@@ -781,7 +781,13 @@ tr:hover td{background:#f8fafc}
 
 <!-- ══════ PRIVADO ══════ -->
 <div class="panel" id="panel-privado">
+  <div class="subtab-bar">
+    <button class="subtab active" data-ptab="saldos" onclick="switchPrivTab('saldos')">💳 Saldos & Despesas</button>
+    <button class="subtab" data-ptab="dividendos" onclick="switchPrivTab('dividendos')">💸 Dividendos BV→Privado</button>
+  </div>
 
+  <!-- ── Saldos & Despesas ── -->
+  <div class="subtab-panel active" id="priv-sub-saldos">
   <div class="card">
     <div class="card-title">💳 O que tenho nos bancos</div>
     <div style="display:flex;flex-direction:column;gap:10px;max-width:320px">
@@ -874,8 +880,60 @@ tr:hover td{background:#f8fafc}
       </div>
     </div>
   </div>
+  </div><!-- /priv-sub-saldos -->
 
-</div>
+  <!-- ── Dividendos BV→Privado ── -->
+  <div class="subtab-panel" id="priv-sub-dividendos">
+
+    <!-- KPIs -->
+    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
+      <div class="kpi green"><div class="kpi-label">Este Ano</div><div class="kpi-val green" id="div-kpi-year">€ 0</div><div class="kpi-sub" id="div-kpi-year-sub">0 transferências</div></div>
+      <div class="kpi blue"><div class="kpi-label">Total Acumulado</div><div class="kpi-val blue" id="div-kpi-total">€ 0</div><div class="kpi-sub" id="div-kpi-total-sub">todos os anos</div></div>
+      <div class="kpi" style="--kpi-color:#7c3aed"><div class="kpi-label">Média Anual</div><div class="kpi-val" id="div-kpi-avg" style="color:#7c3aed">€ 0</div><div class="kpi-sub" id="div-kpi-avg-sub">por ano</div></div>
+    </div>
+
+    <!-- Form -->
+    <div class="card">
+      <div class="card-title">＋ Registar Levantamento</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Data</label>
+          <input type="date" id="div-date" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <div style="flex:1.5;min-width:150px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Conta de origem</label>
+          <select id="div-account" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card)">
+            <option value="centrum_ing">Centrum · ING</option>
+            <option value="centrum_abn">Centrum · ABN AMRO</option>
+            <option value="castor_ing">Lemmer Castor · ING</option>
+            <option value="castor_rabo">Lemmer Castor · Rabobank</option>
+            <option value="sloten_ing">Sloten · ING</option>
+            <option value="sloten_rabo">Sloten · Rabobank</option>
+            <option value="lt_ing">Lemster Tandhuis · ING</option>
+            <option value="lt_abn">Lemster Tandhuis · ABN AMRO</option>
+            <option value="holding_ing">Holding · ING</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:110px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Valor (€)</label>
+          <input type="number" id="div-amount" placeholder="0.00" step="0.01" min="0"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <div style="flex:2;min-width:150px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Notas (opcional)</label>
+          <input type="text" id="div-notes" placeholder="ex: dividendo Q1, salário..."
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <button class="btn btn-primary" onclick="addDividend()" style="padding:7px 16px;margin-bottom:1px;white-space:nowrap">＋ Adicionar</button>
+      </div>
+    </div>
+
+    <!-- List by year -->
+    <div id="div-list"></div>
+
+  </div><!-- /priv-sub-dividendos -->
+
+</div><!-- /panel-privado -->
 
 </div><!-- /content -->
 
@@ -1213,7 +1271,7 @@ function fbRenderAll(){
   if(ap){
     if(ap.id==='panel-saidas')switchSaidaTab(currentSaidaTab);
     if(ap.id==='panel-holding')renderHoldingPanel();
-    if(ap.id==='panel-privado')renderPrivado();
+    if(ap.id==='panel-privado'){renderPrivado();if(privTab==='dividendos')renderDividendos();}
   }
 }
 
@@ -2037,7 +2095,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     if(currentTab==='projections') buildProjections();
     if(currentTab==='saidas'){ switchSaidaTab(currentSaidaTab); }
     if(currentTab==='holding'){ renderHoldingPanel(); }
-    if(currentTab==='privado'){ renderPrivado(); }
+    if(currentTab==='privado'){ switchPrivTab(privTab); }
     if(currentTab==='entradas'){ switchEntradaTab(currentEntradaTab); }
   });
 });
@@ -3411,12 +3469,24 @@ function togglePaidFacs(){
 // ═══════════════════════════════
 const PRIV_KEY='clinica_privado';
 let P={balances:{ing:0,rabo:0},expenses:[]};
+let privTab='saldos';
+
+function switchPrivTab(name){
+  privTab=name;
+  document.querySelectorAll('[data-ptab]').forEach(b=>b.classList.toggle('active',b.dataset.ptab===name));
+  document.querySelectorAll('[id^="priv-sub-"]').forEach(p=>p.classList.remove('active'));
+  const panel=document.getElementById('priv-sub-'+name);
+  if(panel) panel.classList.add('active');
+  if(name==='saldos') renderPrivado();
+  else if(name==='dividendos'){ renderDividendos(); }
+}
 
 function loadPrivado(){
   try{const d=localStorage.getItem(PRIV_KEY);if(d)P=JSON.parse(d);}catch(e){}
   if(!P.balances)P.balances={ing:0,rabo:0};
   if(!Array.isArray(P.expenses))P.expenses=[];
   if(!Array.isArray(P.adhocExpenses))P.adhocExpenses=[];
+  if(!Array.isArray(P.dividends))P.dividends=[];
 }
 function savePrivado(){
   // Read current input values on every save
@@ -3523,6 +3593,128 @@ function deletePrivAdhoc(id){
   localStorage.setItem(PRIV_KEY,JSON.stringify(P));
   fbSavePrivado();
   renderPrivado();
+}
+
+// ─── Dividendos BV→Privado ────────────────────────────────────────
+const DIV_ACCOUNT_LABELS={
+  centrum_ing:'Centrum · ING', centrum_abn:'Centrum · ABN AMRO',
+  castor_ing:'L.Castor · ING', castor_rabo:'L.Castor · Rabobank',
+  sloten_ing:'Sloten · ING',   sloten_rabo:'Sloten · Rabobank',
+  lt_ing:'L.Tandhuis · ING',  lt_abn:'L.Tandhuis · ABN AMRO',
+  holding_ing:'Holding · ING'
+};
+const DIV_BANK_COLORS={ing:'#0e7490',abn:'#d97706',rabo:'#7c3aed',holding:'#64748b'};
+function divBankColor(acct){
+  if(acct.includes('rabo'))return DIV_BANK_COLORS.rabo;
+  if(acct.includes('abn'))return DIV_BANK_COLORS.abn;
+  if(acct.includes('holding'))return DIV_BANK_COLORS.holding;
+  return DIV_BANK_COLORS.ing;
+}
+function addDividend(){
+  const date=document.getElementById('div-date').value;
+  const account=document.getElementById('div-account').value;
+  const amount=parseFloat(document.getElementById('div-amount').value)||0;
+  const notes=document.getElementById('div-notes').value.trim();
+  if(!date){alert('Indica a data.');return;}
+  if(!amount){alert('Indica o valor.');return;}
+  if(!Array.isArray(P.dividends))P.dividends=[];
+  P.dividends.push({id:uid(),date,account,amount,notes});
+  P.dividends.sort((a,b)=>b.date.localeCompare(a.date));
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));
+  fbSavePrivado();
+  document.getElementById('div-amount').value='';
+  document.getElementById('div-notes').value='';
+  renderDividendos();
+}
+function deleteDividend(id){
+  if(!confirm('Eliminar este levantamento?'))return;
+  P.dividends=(P.dividends||[]).filter(d=>d.id!==id);
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));
+  fbSavePrivado();
+  renderDividendos();
+}
+function renderDividendos(){
+  const divs=P.dividends||[];
+  const thisYear=new Date().getFullYear();
+
+  // KPIs
+  const yearDivs=divs.filter(d=>new Date(d.date).getFullYear()===thisYear);
+  const yearTotal=yearDivs.reduce((s,d)=>s+d.amount,0);
+  const allTotal=divs.reduce((s,d)=>s+d.amount,0);
+  const years=[...new Set(divs.map(d=>new Date(d.date).getFullYear()))];
+  const avgAnnual=years.length?allTotal/years.length:0;
+
+  const kpiYear=document.getElementById('div-kpi-year');
+  if(kpiYear){kpiYear.textContent=fmt(yearTotal);document.getElementById('div-kpi-year-sub').textContent=yearDivs.length+' transferência'+(yearDivs.length!==1?'s':'');}
+  const kpiTotal=document.getElementById('div-kpi-total');
+  if(kpiTotal){kpiTotal.textContent=fmt(allTotal);document.getElementById('div-kpi-total-sub').textContent=divs.length+' transferência'+(divs.length!==1?'s':'');}
+  const kpiAvg=document.getElementById('div-kpi-avg');
+  if(kpiAvg){kpiAvg.textContent=years.length?fmt(avgAnnual):'—';document.getElementById('div-kpi-avg-sub').textContent=years.length?years.length+' ano'+(years.length!==1?'s':''):'sem dados';}
+
+  // Init date
+  const dateEl=document.getElementById('div-date');
+  if(dateEl&&!dateEl.value) dateEl.value=today();
+
+  // List grouped by year
+  const listEl=document.getElementById('div-list');
+  if(!listEl)return;
+  if(!divs.length){
+    listEl.innerHTML=`<div class="card"><p style="text-align:center;color:var(--text-sm);font-style:italic;padding:20px 0">Nenhum levantamento registado ainda.</p></div>`;
+    return;
+  }
+
+  // Group by year descending
+  const byYear={};
+  divs.forEach(d=>{
+    const y=new Date(d.date).getFullYear();
+    if(!byYear[y])byYear[y]=[];
+    byYear[y].push(d);
+  });
+
+  listEl.innerHTML=Object.keys(byYear).sort((a,b)=>b-a).map(year=>{
+    const rows=byYear[year];
+    const yearSum=rows.reduce((s,d)=>s+d.amount,0);
+    // Group by account for mini summary
+    const byAcct={};
+    rows.forEach(d=>{byAcct[d.account]=(byAcct[d.account]||0)+d.amount;});
+    const acctSummary=Object.entries(byAcct).map(([a,v])=>`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${divBankColor(a)}22;color:${divBankColor(a)};font-weight:600">${DIV_ACCOUNT_LABELS[a]||a}: ${fmt(v)}</span>`).join('');
+    const tableRows=rows.map(d=>{
+      const dt=new Date(d.date+'T12:00:00');
+      const dLabel=`${String(dt.getDate()).padStart(2,'0')} ${MONTHS_SHORT[dt.getMonth()]}`;
+      return `<tr>
+        <td style="font-size:13px">${dLabel}</td>
+        <td><span style="font-size:12px;padding:2px 8px;border-radius:10px;background:${divBankColor(d.account)}22;color:${divBankColor(d.account)};font-weight:600">${DIV_ACCOUNT_LABELS[d.account]||d.account}</span></td>
+        <td style="text-align:right;font-weight:700;font-size:14px;color:var(--success)">${fmt(d.amount)}</td>
+        <td style="font-size:12px;color:var(--text-sm)">${d.notes||''}</td>
+        <td style="text-align:right"><button onclick="deleteDividend('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-sm);padding:0 4px" title="Eliminar">×</button></td>
+      </tr>`;
+    }).join('');
+    return `<div class="card" style="${parseInt(year)===thisYear?'border:1px solid var(--success)33':''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:16px;font-weight:800">${year}</span>
+          ${parseInt(year)===thisYear?'<span style="font-size:11px;padding:2px 7px;border-radius:8px;background:#dcfce7;color:#166534;font-weight:700">ano atual</span>':''}
+          ${acctSummary}
+        </div>
+        <span style="font-size:18px;font-weight:800;color:var(--success)">${fmt(yearSum)}</span>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th style="width:60px">Data</th>
+          <th>Conta</th>
+          <th style="text-align:right">Valor</th>
+          <th>Notas</th>
+          <th style="width:30px"></th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot><tr style="border-top:2px solid var(--border)">
+          <td colspan="2" style="font-weight:700;padding:8px 4px">Total ${year}</td>
+          <td style="text-align:right;font-weight:800;font-size:15px;color:var(--success)">${fmt(yearSum)}</td>
+          <td colspan="2"></td>
+        </tr></tfoot>
+      </table></div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════
@@ -4552,8 +4744,8 @@ let scenarioFactor=1.0;
 function setScenario(f){
   scenarioFactor=f;
   document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));
-  if(f===0.85) document.getElementById('scen-pessimista').classList.add('active');
-  else if(f===1.15) document.getElementById('scen-optimista').classList.add('active');
+  if(f===0.90) document.getElementById('scen-pessimista').classList.add('active');
+  else if(f===1.10) document.getElementById('scen-optimista').classList.add('active');
   else document.getElementById('scen-base').classList.add('active');
   const lbl=document.getElementById('scen-label');
   if(lbl) lbl.textContent=f===1.0?'':(f>1?`+${Math.round((f-1)*100)}% nas entradas previstas`:`${Math.round((f-1)*100)}% nas entradas previstas`);
