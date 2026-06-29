@@ -4085,7 +4085,7 @@ function confirmOut(){
   const r=S.recurringOut.find(x=>x.id===pendingOutRecId);if(!r)return;
   const amount=parseFloat(document.getElementById('cout-amount').value)||0;
   const date=document.getElementById('cout-date').value;
-  if(!date||!amount){alert('Preenche data e valor.');return;}
+  if(!date){alert('Preenche a data.');return;}
   S.entries.push({id:uid(),date,type:'saida',amount,
     category:r.category,account:r.account,
     notes:document.getElementById('cout-notes').value.trim(),
