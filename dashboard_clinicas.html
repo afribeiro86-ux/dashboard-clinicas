@@ -3450,9 +3450,11 @@ function renderOutCalendar(){
   //   so July's starting balance = end-of-June balance, August = end-of-July, etc.
   // Past days: only subtract unpaid items (income already in saldo; don't add again).
   // Today/future: add expected income AND subtract unpaid outgoings.
+  // runBal declared here (function scope) so "Saldo fim do mês" can read the final value
+  let runBal=getTotalSaldo();
   const runBalMap={};
+  // For future months: carry forward projected net from current month up to (not including) viewed month
   {
-    let runBal=getTotalSaldo();
     const cm=curMonth();
     if(mk>cm){
       let d2=new Date();d2.setDate(1);
@@ -3463,21 +3465,21 @@ function renderOutCalendar(){
         d2.setMonth(d2.getMonth()+1);
       }
     }
-    for(let day=1;day<=daysInMonth;day++){
-      const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const isPast=dateStr<todayStr;
-      const items=dayMap[day]||[];
-      const facs=facMap[day]||[];
-      // Only add income for today/future (past income already in saldo)
-      if(!isPast) runBal+=(incomeDayMap[day]||0);
-      // Subtract ALL unpaid outgoings — overdue items still reduce the projected balance
-      const unpaidRec=items.filter(it=>!it.paid).reduce((s,it)=>s+it.amount,0);
-      const unpaidFac=facs.reduce((s,f)=>s+f.amount,0);
-      const dayOut=unpaidRec+unpaidFac;
-      if(dayOut>0){
-        runBal-=dayOut;
-        runBalMap[day]=runBal;
-      }
+  }
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isPast=dateStr<todayStr;
+    const items=dayMap[day]||[];
+    const facs=facMap[day]||[];
+    // Only add income for today/future (past income already in saldo)
+    if(!isPast) runBal+=(incomeDayMap[day]||0);
+    // Subtract ALL unpaid outgoings — overdue items still reduce the projected balance
+    const unpaidRec=items.filter(it=>!it.paid).reduce((s,it)=>s+it.amount,0);
+    const unpaidFac=facs.reduce((s,f)=>s+f.amount,0);
+    const dayOut=unpaidRec+unpaidFac;
+    if(dayOut>0){
+      runBal-=dayOut;
+      runBalMap[day]=runBal;
     }
   }
 
