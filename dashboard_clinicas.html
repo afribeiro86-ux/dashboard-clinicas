@@ -36,6 +36,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab:hover{color:var(--primary)}.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
 .subtabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px;background:var(--bg);border-radius:10px;padding:5px}
 .subtab{padding:8px 16px;font-size:13px;font-weight:500;color:var(--text-sm);cursor:pointer;border-radius:7px;transition:all .15s;border:none;background:none;white-space:nowrap}
+.scenario-btn{padding:7px 14px;font-size:13px;font-weight:600;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text-sm);cursor:pointer;transition:all .15s}
+.scenario-btn.active{border-color:var(--primary);background:var(--primary)11;color:var(--primary)}
+.scenario-btn:hover{border-color:var(--primary);color:var(--primary)}
 .subtab:hover{color:var(--primary);background:#fff}
 .subtab.active{color:var(--primary);background:#fff;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .subtab-panel{display:none}.subtab-panel.active{display:block}
@@ -235,6 +238,7 @@ tr:hover td{background:#f8fafc}
     <div class="kpi green"><div class="kpi-label">Entradas Este Mês</div><div class="kpi-val green" id="kpi-in-month">€ 0</div><div class="kpi-sub" id="kpi-in-sub">—</div></div>
     <div class="kpi red"><div class="kpi-label">Saídas Este Mês</div><div class="kpi-val red" id="kpi-out-month">€ 0</div><div class="kpi-sub" id="kpi-out-sub">—</div></div>
     <div class="kpi orange"><div class="kpi-label">Resultado Este Mês</div><div class="kpi-val" id="kpi-net">€ 0</div><div class="kpi-sub">Entradas − Saídas</div></div>
+    <div class="kpi" style="--kpi-color:#7c3aed"><div class="kpi-label" style="color:#7c3aed">Runway de Caixa</div><div class="kpi-val" id="kpi-runway" style="color:#7c3aed">— meses</div><div class="kpi-sub" id="kpi-runway-sub">Com base no cash flow previsto</div></div>
   </div>
   <div class="card">
     <div class="card-title">Saldos Actuais <span class="card-title-note">Clica numa conta para editar</span></div>
@@ -547,6 +551,15 @@ tr:hover td{background:#f8fafc}
 
 <!-- ══════ PROJEÇÕES ══════ -->
 <div class="panel" id="panel-projections">
+  <!-- Scenario selector + report button -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--text-sm);font-weight:600">Cenário:</span>
+    <button class="scenario-btn" id="scen-pessimista" onclick="setScenario(0.85)">📉 −15%</button>
+    <button class="scenario-btn active" id="scen-base" onclick="setScenario(1.0)">📊 Base</button>
+    <button class="scenario-btn" id="scen-optimista" onclick="setScenario(1.15)">📈 +15%</button>
+    <span id="scen-label" style="font-size:12px;color:var(--text-sm);margin-left:4px"></span>
+    <button onclick="exportMonthlyReport()" style="margin-left:auto;background:var(--text-sm);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">📄 Relatório Mensal</button>
+  </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
     <div id="proj-note" style="background:var(--warn-lt);border:1px solid #fcd34d;border-radius:10px;padding:10px 15px;font-size:13px;color:#78350f;flex:1">
       📊 Projeções ficam mais precisas com mais meses de dados reais. Meses futuros usam os valores planeados nos calendários.
@@ -596,6 +609,31 @@ tr:hover td{background:#f8fafc}
       <thead><tr><th>Mês</th><th style="text-align:right">Entradas Reais</th><th style="text-align:right">Infomedics Planeado</th><th style="text-align:right">Saídas Reais</th><th style="text-align:right">Saídas Planeadas</th><th style="text-align:right">Resultado</th></tr></thead>
       <tbody id="hist-table"></tbody>
     </table></div>
+  </div>
+
+  <!-- Task #12: €/Cadeira por Clínica histórico -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🦷 €/Cadeira por Clínica · Histórico</span>
+      <span style="font-size:11px;color:var(--text-sm);font-weight:400">últimos 12 meses</span>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Mês</th>
+        <th style="text-align:right;color:#0e7490">Centrum</th>
+        <th style="text-align:right;color:#7c3aed">L.Castor</th>
+        <th style="text-align:right;color:#059669">Sloten</th>
+        <th style="text-align:right;color:#d97706">L.Tandhuis</th>
+        <th style="text-align:right">Média</th>
+      </tr></thead>
+      <tbody id="chair-hist-table"></tbody>
+    </table></div>
+  </div>
+
+  <!-- Task #13: Break-even por clínica -->
+  <div class="card">
+    <div class="card-title">⚖️ Break-even por Clínica</div>
+    <div id="breakeven-content"><div class="empty-row" style="padding:20px;text-align:center;color:var(--text-sm)">A calcular…</div></div>
   </div>
 </div>
 
@@ -998,6 +1036,20 @@ tr:hover td{background:#f8fafc}
 </div>
 
 <!-- ══════ MODAL: DELETE ══════ -->
+<!-- ══ Relatório Mensal Modal ══ -->
+<div class="modal-bg" id="reportModal">
+  <div class="modal" style="width:680px;max-width:96vw">
+    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between">
+      <h3 id="report-title">📄 Relatório Mensal</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="window.print()" style="font-size:12px;padding:6px 12px">🖨 Imprimir</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('reportModal').classList.remove('open')" style="font-size:12px;padding:6px 12px">✕ Fechar</button>
+      </div>
+    </div>
+    <div class="modal-body" id="report-body" style="max-height:70vh;overflow-y:auto;font-size:13px"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="editEntryModal">
   <div class="modal" style="width:420px">
     <div class="modal-header"><h3>✏ Editar registo</h3></div>
@@ -2164,6 +2216,35 @@ function updateKpis(){
   document.getElementById('kpi-out-sub').textContent=outE.length+' registos';
   const net=inSum-outSum;const ne=document.getElementById('kpi-net');
   ne.textContent=fmtSigned(net);ne.className='kpi-val '+(net>=0?'green':'red');
+
+  // Runway: how many months before balance goes negative
+  const runwayEl=document.getElementById('kpi-runway');
+  const runwaySubEl=document.getElementById('kpi-runway-sub');
+  if(runwayEl){
+    let bal=getTotalSaldo();
+    let runway=0;
+    const now=new Date();
+    for(let i=0;i<36;i++){
+      const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+      const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const monthNet=getRemainingIncomeForMonth(k)-getRemainingOutForMonth(k);
+      bal+=monthNet;
+      if(bal<0) break;
+      runway++;
+    }
+    if(runway>=36){
+      runwayEl.textContent='36+ meses';
+      runwayEl.style.color='var(--success)';
+    } else if(runway>=6){
+      runwayEl.textContent=runway+' meses';
+      runwayEl.style.color='#7c3aed';
+    } else {
+      runwayEl.textContent=runway+' meses';
+      runwayEl.style.color='var(--danger)';
+    }
+    if(runwaySubEl) runwaySubEl.textContent=runway>=36?'Operação sustentável ✓':runway<=3?'⚠️ Atenção ao cash flow':'Com base no cash flow previsto';
+  }
+
   updateAlerts();
   renderPendingPayments();
   if(currentTab==='projections'&&!projBuilt) buildProjections();
@@ -4316,7 +4397,7 @@ function buildProjections(){
     const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const isRealMonth=byMonth[k]&&k<curMon; // fully past month with real data
     const isCur=k===curMon;
-    const planInK=getRemainingIncomeForMonth(k);
+    const planInK=getRemainingIncomeForMonth(k)*scenarioFactor;
     const planOutK=planOut;
     fl.push(mLabel(k));
     if(isRealMonth){
@@ -4413,13 +4494,13 @@ function buildProjections(){
       inAmt=byMonth[k].in;outAmt=byMonth[k].out;isPlanned=false;
       inLabel='';outLabel='';
     } else if(isCur){
-      inAmt=getRemainingIncomeForMonth(k);
+      inAmt=getRemainingIncomeForMonth(k)*scenarioFactor;
       outAmt=getRemainingOutForMonth(k); // future-only, matches calendar running balance
       isPlanned=true;
       inLabel=realInSoFar>0?`<div style="font-size:10px;color:var(--text-sm)">já entrou: ${fmt(realInSoFar)}</div>`:'';
       outLabel=monthSummary.paidTotal>0?`<div style="font-size:10px;color:var(--text-sm)">já saiu: ${fmt(monthSummary.paidTotal)}</div>`:'';
     } else {
-      inAmt=getRemainingIncomeForMonth(k);outAmt=getRemainingOutForMonth(k);isPlanned=true;
+      inAmt=getRemainingIncomeForMonth(k)*scenarioFactor;outAmt=getRemainingOutForMonth(k);isPlanned=true;
       inLabel='';outLabel='';
     }
     const net=inAmt-outAmt;
@@ -4443,14 +4524,202 @@ function buildProjections(){
   }
   balEl.innerHTML=balRows.join('');
 
+  // Scenario badge in projected balance table title
+  const scenBadge=scenarioFactor!==1.0
+    ?`<span style="margin-left:8px;font-size:11px;padding:2px 6px;border-radius:4px;background:${scenarioFactor>1?'#dcfce7':'#fee2e2'};color:${scenarioFactor>1?'#166534':'#991b1b'};font-weight:700">${scenarioFactor>1?'+':''}${Math.round((scenarioFactor-1)*100)}% entradas</span>`
+    :'';
+  const projTitle=document.querySelector('#panel-projections .card-title span');
+  if(projTitle) projTitle.innerHTML='💰 Saldo Projetado'+scenBadge;
+
   // Historical table (real months only)
   const hist=document.getElementById('hist-table');
-  if(!realMonths.length){hist.innerHTML=`<tr class="empty-row"><td colspan="6">Sem dados ainda</td></tr>`;return;}
-  hist.innerHTML=[...realMonths].reverse().map(m=>{
-    const d=byMonth[m];const net=d.in-d.out;
-    const infoTotal=getAllClinicsAmount(m);
-    return `<tr><td><strong>${mLabel(m)}</strong></td><td class="amt-pos" style="text-align:right">${fmt(d.in)}</td><td style="text-align:right;color:var(--text-sm)">${fmt(infoTotal)}</td><td class="amt-neg" style="text-align:right">− ${fmt(d.out)}</td><td style="text-align:right;color:var(--text-sm)">− ${fmt(planOut)}</td><td style="text-align:right;font-weight:700;color:${net>=0?'var(--success)':'var(--danger)'}">${fmtSigned(net)}</td></tr>`;
+  if(!realMonths.length){hist.innerHTML=`<tr class="empty-row"><td colspan="6">Sem dados ainda</td></tr>`;}
+  else{
+    hist.innerHTML=[...realMonths].reverse().map(m=>{
+      const d=byMonth[m];const net=d.in-d.out;
+      const infoTotal=getAllClinicsAmount(m);
+      return `<tr><td><strong>${mLabel(m)}</strong></td><td class="amt-pos" style="text-align:right">${fmt(d.in)}</td><td style="text-align:right;color:var(--text-sm)">${fmt(infoTotal)}</td><td class="amt-neg" style="text-align:right">− ${fmt(d.out)}</td><td style="text-align:right;color:var(--text-sm)">− ${fmt(planOut)}</td><td style="text-align:right;font-weight:700;color:${net>=0?'var(--success)':'var(--danger)'}">${fmtSigned(net)}</td></tr>`;
+    }).join('');
+  }
+
+  // Build new feature tables
+  buildChairHistoric();
+  buildBreakeven();
+}
+
+// ─── Scenario factor (Task #14) ───────────────────────────────────
+let scenarioFactor=1.0;
+function setScenario(f){
+  scenarioFactor=f;
+  document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));
+  if(f===0.85) document.getElementById('scen-pessimista').classList.add('active');
+  else if(f===1.15) document.getElementById('scen-optimista').classList.add('active');
+  else document.getElementById('scen-base').classList.add('active');
+  const lbl=document.getElementById('scen-label');
+  if(lbl) lbl.textContent=f===1.0?'':(f>1?`+${Math.round((f-1)*100)}% nas entradas previstas`:`${Math.round((f-1)*100)}% nas entradas previstas`);
+  projBuilt=false; buildProjections();
+}
+
+// ─── €/Cadeira Histórico (Task #12) ───────────────────────────────
+function buildChairHistoric(){
+  const el=document.getElementById('chair-hist-table');
+  if(!el)return;
+  const allMonths=new Set();
+  INFOMEDICS_CLINICS.forEach(c=>Object.keys(S.infomedicsCalendar[c]||{}).forEach(d=>allMonths.add(mKey(d))));
+  const months=[...allMonths].sort().reverse().slice(0,12);
+  if(!months.length){el.innerHTML='<tr><td colspan="6" class="empty-row" style="padding:16px;text-align:center">Sem dados Infomedics ainda</td></tr>';return;}
+  el.innerHTML=months.map(mk=>{
+    const cells=INFOMEDICS_CLINICS.map(c=>{
+      const ch=getMonthChairs(c,mk);
+      const amt=getMonthAmount(c,mk);
+      if(!ch)return`<td style="text-align:right;color:var(--text-sm)">—</td>`;
+      return`<td style="text-align:right;font-weight:600;color:${CLINIC_COLORS[c]}">${fmt(amt/ch)}</td>`;
+    }).join('');
+    const totCh=INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthChairs(c,mk),0);
+    const totAmt=INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthAmount(c,mk),0);
+    return`<tr><td><strong>${mLabel(mk)}</strong></td>${cells}<td style="text-align:right;font-weight:700">${totCh?fmt(totAmt/totCh):'—'}</td></tr>`;
   }).join('');
+}
+
+// ─── Break-even (Task #13) ────────────────────────────────────────
+function buildBreakeven(){
+  const el=document.getElementById('breakeven-content');
+  if(!el)return;
+  const planOut=getPlannedOut();
+  const now=new Date();
+  const histMonths=[];
+  for(let i=1;i<=6;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    histMonths.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  const clinicData=INFOMEDICS_CLINICS.map(c=>{
+    let totCh=0,totAmt=0,mCount=0;
+    histMonths.forEach(mk=>{
+      const ch=getMonthChairs(c,mk);
+      if(ch>0){totCh+=ch;totAmt+=getMonthAmount(c,mk);mCount++;}
+    });
+    const avgPerChair=totCh?totAmt/totCh:0;
+    const avgChairs=mCount?totCh/mCount:0;
+    const avgAmt=mCount?totAmt/mCount:0;
+    return{cId:c,name:CLINIC_NAMES[c],color:CLINIC_COLORS[c],avgPerChair,avgChairs,avgAmt,hasData:mCount>0};
+  });
+  const totalAvgAmt=clinicData.reduce((s,c)=>s+c.avgAmt,0);
+  const totalAvgChairs=clinicData.reduce((s,c)=>s+c.avgChairs,0);
+  const overallPerChair=totalAvgChairs?totalAvgAmt/totalAvgChairs:0;
+  const beChairs=overallPerChair?Math.ceil(planOut/overallPerChair):0;
+  const noData=!clinicData.some(c=>c.hasData);
+  if(noData){el.innerHTML='<div class="empty-row" style="padding:20px;text-align:center;color:var(--text-sm)">Sem dados Infomedics suficientes (precisa de dados históricos)</div>';return;}
+  el.innerHTML=`
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:14px">
+    ${clinicData.map(c=>{
+      if(!c.hasData)return`<div style="border:1px dashed var(--border);border-radius:10px;padding:12px;opacity:.5"><div style="font-weight:700;color:${c.color}">${c.name}</div><div style="font-size:12px;color:var(--text-sm);margin-top:8px">Sem dados</div></div>`;
+      const share=totalAvgAmt?c.avgAmt/totalAvgAmt:0;
+      const costShare=planOut*share;
+      const chairsNeeded=c.avgPerChair?Math.ceil(costShare/c.avgPerChair):0;
+      const surplus=c.avgAmt-costShare;
+      const ok=c.avgChairs>=chairsNeeded;
+      return`<div style="border:1px solid ${c.color}44;border-radius:10px;padding:12px;border-left:4px solid ${c.color}">
+        <div style="font-weight:700;color:${c.color};margin-bottom:8px">${c.name}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+          <div><div style="color:var(--text-sm)">€/cad. médio</div><div style="font-size:16px;font-weight:800">${fmt(c.avgPerChair)}</div></div>
+          <div><div style="color:var(--text-sm)">Cadeiras/mês</div><div style="font-size:16px;font-weight:800">${c.avgChairs.toFixed(1)}</div></div>
+          <div><div style="color:var(--text-sm)">Custo atribuído</div><div style="font-weight:600;color:var(--danger)">${fmt(costShare)}</div></div>
+          <div><div style="color:var(--text-sm)">Break-even</div><div style="font-weight:700;color:${ok?'var(--success)':'var(--danger)'}">${chairsNeeded} cad.</div></div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;padding:4px 8px;border-radius:6px;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'var(--success)':'var(--danger)'}">
+          ${ok?'✓ Em excedente':'⚠️ Em défice'} · ${fmt(Math.abs(surplus))}/mês
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="background:var(--primary)11;border:1px solid var(--primary)33;border-radius:10px;padding:14px;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+    <div><div style="font-size:11px;color:var(--text-sm)">Despesas mensais</div><div style="font-size:20px;font-weight:800;color:var(--danger)">${fmt(planOut)}</div></div>
+    <div><div style="font-size:11px;color:var(--text-sm)">€/cad. médio global</div><div style="font-size:20px;font-weight:800">${overallPerChair?fmt(overallPerChair):'—'}</div></div>
+    <div><div style="font-size:11px;color:var(--text-sm)">Break-even global</div><div style="font-size:20px;font-weight:800;color:var(--primary)">${beChairs} cad./mês</div></div>
+    <div><div style="font-size:11px;color:var(--text-sm)">Média atual</div><div style="font-size:20px;font-weight:800;color:${totalAvgChairs>=beChairs?'var(--success)':'var(--danger)'}">${totalAvgChairs.toFixed(1)} cad.</div></div>
+  </div>
+  <div style="font-size:11px;color:var(--text-sm);margin-top:8px">Custos atribuídos por clínica proporcionalmente à sua receita. Baseado nos últimos 6 meses.</div>`;
+}
+
+// ─── Relatório mensal (Task #15) ──────────────────────────────────
+function exportMonthlyReport(){
+  const mk=curMonth();
+  const label=mLabel(mk);
+  const now=new Date();
+  const byMonth={};
+  (S.entries||[]).forEach(e=>{
+    const k=mKey(e.date);if(!byMonth[k])byMonth[k]={in:0,out:0,entries:[]};
+    if(e.type==='entrada')byMonth[k].in+=e.amount;else byMonth[k].out+=e.amount;
+    byMonth[k].entries.push(e);
+  });
+  const cur=byMonth[mk]||{in:0,out:0,entries:[]};
+  // Previous month
+  const prevD=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const prevMk=`${prevD.getFullYear()}-${String(prevD.getMonth()+1).padStart(2,'0')}`;
+  const prev=byMonth[prevMk]||{in:0,out:0};
+  // Income breakdown
+  const infoAmt=INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthAmount(c,mk),0);
+  const infoChairs=INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthChairs(c,mk),0);
+  const segCal=(S.seguros&&S.seguros.calendar)||{};
+  const segAmt=Object.entries(segCal).filter(([d])=>mKey(d)===mk).reduce((s,[,e])=>{if(!e||!e.receipts)return s;return s+(e.receipts||[]).reduce((ss,r)=>ss+r,0);},0);
+  const outByCat={};
+  cur.entries.filter(e=>e.type==='saida').forEach(e=>{outByCat[e.category]=(outByCat[e.category]||0)+e.amount;});
+  const net=cur.in-cur.out;
+  const prevNet=prev.in-prev.out;
+  const diff=net-prevNet;
+  // Build HTML
+  const html=`<div style="font-family:system-ui;line-height:1.6">
+    <div style="text-align:center;padding:16px 0 8px;border-bottom:2px solid var(--border)">
+      <div style="font-size:20px;font-weight:800">Relatório Financeiro · ${label}</div>
+      <div style="font-size:12px;color:var(--text-sm)">Gerado em ${new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'})}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0">
+      <div style="border-radius:8px;padding:12px;background:#dcfce7;text-align:center">
+        <div style="font-size:11px;color:#166534;font-weight:600">ENTRADAS</div>
+        <div style="font-size:22px;font-weight:800;color:#166534">${fmt(cur.in)}</div>
+        ${prev.in?`<div style="font-size:11px;color:#166534">${cur.in>=prev.in?'▲':'▼'} vs ${mLabel(prevMk)}: ${fmt(Math.abs(cur.in-prev.in))}</div>`:''}
+      </div>
+      <div style="border-radius:8px;padding:12px;background:#fee2e2;text-align:center">
+        <div style="font-size:11px;color:#991b1b;font-weight:600">SAÍDAS</div>
+        <div style="font-size:22px;font-weight:800;color:#991b1b">${fmt(cur.out)}</div>
+        ${prev.out?`<div style="font-size:11px;color:#991b1b">${cur.out<=prev.out?'▼':'▲'} vs ${mLabel(prevMk)}: ${fmt(Math.abs(cur.out-prev.out))}</div>`:''}
+      </div>
+      <div style="border-radius:8px;padding:12px;background:${net>=0?'#eff6ff':'#fff7ed'};text-align:center">
+        <div style="font-size:11px;color:${net>=0?'#1e40af':'#92400e'};font-weight:600">RESULTADO</div>
+        <div style="font-size:22px;font-weight:800;color:${net>=0?'#1e40af':'#92400e'}">${fmtSigned(net)}</div>
+        ${prevNet?`<div style="font-size:11px;color:${net>=0?'#1e40af':'#92400e'}">${diff>=0?'▲':'▼'} ${fmtSigned(diff)} vs ${mLabel(prevMk)}</div>`:''}
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:6px;font-size:14px;color:var(--success)">📥 Entradas</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr style="background:#f8fafc"><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">Infomedics (${infoChairs} cad.)</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e2e8f0;font-weight:600">${fmt(infoAmt)}</td></tr>
+        ${infoChairs?`<tr><td style="padding:4px 8px 4px 16px;color:var(--text-sm);font-size:12px">  € por cadeira</td><td style="text-align:right;padding:4px 8px;color:var(--text-sm);font-size:12px">${fmt(infoAmt/infoChairs)}/cad.</td></tr>`:''}
+        ${INFOMEDICS_CLINICS.map(c=>{const ch=getMonthChairs(c,mk);const am=getMonthAmount(c,mk);if(!ch)return'';return`<tr><td style="padding:3px 8px 3px 20px;font-size:12px;color:${CLINIC_COLORS[c]}">${CLINIC_NAMES[c]} (${ch} cad.)</td><td style="text-align:right;padding:3px 8px;font-size:12px">${fmt(am)}</td></tr>`;}).join('')}
+        ${segAmt?`<tr style="background:#f8fafc"><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">Seguros</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e2e8f0;font-weight:600">${fmt(segAmt)}</td></tr>`:''}
+        ${cur.in-infoAmt-segAmt>0.01?`<tr style="background:#f8fafc"><td style="padding:6px 8px">Outros</td><td style="text-align:right;padding:6px 8px;font-weight:600">${fmt(cur.in-infoAmt-segAmt)}</td></tr>`:''}
+        <tr style="background:#dcfce7"><td style="padding:6px 8px;font-weight:700">Total Entradas</td><td style="text-align:right;padding:6px 8px;font-weight:800;color:#166534">${fmt(cur.in)}</td></tr>
+      </table>
+    </div>
+
+    ${Object.keys(outByCat).length?`<div style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:6px;font-size:14px;color:var(--danger)">📤 Saídas por Categoria</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        ${Object.entries(outByCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt],i)=>`<tr style="${i%2?'':'background:#f8fafc'}"><td style="padding:5px 8px;border-bottom:1px solid #e2e8f0">${cat||'Sem categoria'}</td><td style="text-align:right;padding:5px 8px;border-bottom:1px solid #e2e8f0">${fmt(amt)}</td></tr>`).join('')}
+        <tr style="background:#fee2e2"><td style="padding:6px 8px;font-weight:700">Total Saídas</td><td style="text-align:right;padding:6px 8px;font-weight:800;color:#991b1b">${fmt(cur.out)}</td></tr>
+      </table>
+    </div>`:`<div style="padding:12px;color:var(--text-sm);font-size:13px">Sem saídas registadas este mês.</div>`}
+
+    <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;color:var(--text-sm)">Saldo total actual: <strong>${fmt(getTotalSaldo())}</strong></div>
+      <div style="font-size:12px;color:var(--text-sm)">Dashboard Clínicas · afribeiro86@gmail.com</div>
+    </div>
+  </div>`;
+  document.getElementById('report-title').textContent=`📄 Relatório · ${label}`;
+  document.getElementById('report-body').innerHTML=html;
+  document.getElementById('reportModal').classList.add('open');
 }
 
 // ═══════════════════════════════
