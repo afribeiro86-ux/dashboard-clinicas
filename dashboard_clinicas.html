@@ -277,6 +277,12 @@ tr:hover td{background:#f8fafc}
       <div style="font-size:12px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📨 Quando entra o dinheiro</div>
       <div id="info-payments-list"><p style="font-size:13px;color:var(--text-sm);font-style:italic">Nenhuma cadeira definida para este mês.</p></div>
     </div>
+
+    <!-- Monthly average per chair -->
+    <div id="info-avg-bar" style="display:none;margin-top:14px;padding:10px 14px;background:var(--primary-lt);border:1px solid var(--primary);border-radius:10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px">Média mensal por cadeira</span>
+      <span id="info-avg-val" style="font-size:18px;font-weight:800;color:var(--primary)">—</span>
+    </div>
   </div>
   </div><!-- /entrada-sub-infomedics -->
 
@@ -2151,6 +2157,16 @@ function renderInfomedicsPanel(){
   const totalAmt=getAllClinicsAmount(infoMonth);
   document.getElementById('info-total-chairs').textContent=totalChairs+' cad.';
   document.getElementById('info-total-val').textContent=fmt(totalAmt);
+  const avgBar=document.getElementById('info-avg-bar');
+  const avgVal=document.getElementById('info-avg-val');
+  if(avgBar&&avgVal){
+    if(totalChairs>0){
+      avgBar.style.display='flex';
+      avgVal.textContent=fmt(totalAmt/totalChairs)+'/cad.';
+    } else {
+      avgBar.style.display='none';
+    }
+  }
   renderExpectedPayments();
 }
 
@@ -2188,15 +2204,18 @@ function renderExpectedPayments(){
   el.innerHTML=Object.keys(byArrival).sort().map(arrDate=>{
     const clinicGroups=byArrival[arrDate].sort((a,b)=>INFOMEDICS_CLINICS.indexOf(a.cId)-INFOMEDICS_CLINICS.indexOf(b.cId));
     const total=clinicGroups.reduce((s,g)=>s+g.decls.reduce((ss,p)=>ss+p.amount,0),0);
+    const totalChairs=clinicGroups.reduce((s,g)=>s+g.decls.reduce((ss,p)=>ss+p.chairs,0),0);
     const allReceived=clinicGroups.every(g=>g.decls.every(p=>getReceivedEntry(p.cId,p.declDate)));
     const d=new Date(arrDate+'T12:00:00');
     const isPast=arrDate<todayStr, isToday=arrDate===todayStr;
     const dotColor=allReceived?'var(--success)':isPast||isToday?'var(--danger)':'var(--primary)';
     const dateLabel=`${WEEKDAYS_PT[d.getDay()]}, ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+    const totalPerChair=totalChairs>0?`<span style="font-size:11px;background:var(--primary-lt);color:var(--primary);border-radius:5px;padding:1px 6px;white-space:nowrap">${fmt(total/totalChairs)}/cad.</span>`:'';
 
     return `<div style="margin-bottom:12px;border-left:3px solid ${dotColor};padding-left:10px">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
         <span style="font-size:13px;font-weight:700;color:${dotColor}">${allReceived?'✓ ':isPast||isToday?'⚠ ':''}${dateLabel}</span>
+        ${totalPerChair}
         <span style="margin-left:auto;font-weight:800;font-size:14px;color:var(--success)">${fmt(total)}</span>
       </div>
       ${clinicGroups.map(g=>{
@@ -2218,7 +2237,7 @@ function renderExpectedPayments(){
           ?`<button class="btn btn-ghost btn-sm" onclick="annulInfomedicsGroup('${g.cId}','${encDates}')" style="font-size:11px;padding:3px 8px">anular</button>`
           :`<button class="btn ${isPast||isToday?'btn-success':'btn-ghost'} btn-sm" onclick="receiveInfomedicsGroup('${g.cId}','${encDates}','${arrDate}')" style="font-size:11px;padding:3px 9px">+ Receber</button>`;
         const perChair=grpChairs>0?grpAmount/grpChairs:0;
-        const perChairBadge=grpChairs>0&&!grpReceived?`<span style="font-size:10px;background:var(--primary-lt);color:var(--primary);border-radius:5px;padding:1px 5px;white-space:nowrap">${fmt(perChair)}/cad.</span>`:'';
+        const perChairBadge=grpChairs>0?`<span style="font-size:10px;background:var(--primary-lt);color:var(--primary);border-radius:5px;padding:1px 5px;white-space:nowrap">${fmt(perChair)}/cad.</span>`:'';
         return `<div style="display:flex;align-items:center;gap:7px;padding:5px 9px;background:var(--bg);border-radius:7px;margin-bottom:3px;font-size:12px">
           <span class="cdot" style="background:${CLINIC_COLORS[g.cId]}"></span>
           <span style="font-weight:600">${CLINIC_NAMES[g.cId]}</span>
