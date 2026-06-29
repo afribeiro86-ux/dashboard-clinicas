@@ -2343,6 +2343,18 @@ function annulInfomedicsGroup(clinicId, declDatesEncoded){
 // ═══════════════════════════════
 const SEG_COLOR='#7c3aed';
 let segurosMonth=curMonth();
+const segCollapsed={}; // declDate → true/false (manual override); undefined = auto
+
+function toggleSegCollapsed(declDate){
+  const entry=getSegEntry(declDate)||{};
+  const declared=entry.declared||0;
+  const totalRec=(entry.receipts||[]).reduce((s,r)=>s+r.amount,0);
+  const isFullyReceived=declared>0&&totalRec>=declared;
+  // current state: manual override or auto default
+  const current=segCollapsed[declDate]!==undefined ? segCollapsed[declDate] : isFullyReceived;
+  segCollapsed[declDate]=!current;
+  renderSegurosArrivals();
+}
 
 function segurosNavMonth(delta){
   const [y,m]=segurosMonth.split('-').map(Number);
@@ -2496,15 +2508,23 @@ function renderSegurosArrivals(){
     const borderColor=isFullyReceived?'var(--success)':declared>0?SEG_COLOR:'#c4b5fd';
     const suffix=declDate.replace(/-/g,'');
 
-    return `<div style="margin-bottom:14px;border:1px solid ${borderColor}44;border-radius:10px;overflow:hidden">
-      <!-- Header -->
-      <div style="background:${borderColor}11;padding:10px 14px;border-bottom:1px solid ${borderColor}22;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    // Collapsed by default when fully received; manual override stored in segCollapsed
+    const collapsed=segCollapsed[declDate]!==undefined ? segCollapsed[declDate] : isFullyReceived;
+    const arrow=collapsed?'▶':'▼';
+
+    return `<div style="margin-bottom:10px;border:1px solid ${borderColor}44;border-radius:10px;overflow:hidden">
+      <!-- Header (clickable to toggle) -->
+      <div onclick="toggleSegCollapsed('${declDate}')" style="background:${borderColor}11;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer;user-select:none;${collapsed?'':'border-bottom:1px solid '+borderColor+'22'}">
+        <span style="font-size:15px;color:${borderColor};font-weight:700;line-height:1">${arrow}</span>
         <span style="font-size:13px;font-weight:700;color:${borderColor}">${isFullyReceived?'✓ ':''}📋 ${declLabel}</span>
+        ${isFullyReceived&&collapsed?`<span style="font-size:12px;color:var(--success);margin-left:4px">— ${fmt(totalRec)}</span>`:''}
         <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           ${planned>0&&!declared?`<span style="font-size:12px;color:#a78bfa">Planeado: ${fmt(planned)}</span>`:''}
           ${declared>0?`<span style="font-size:12px;font-weight:700;color:${SEG_COLOR}">Declarado: ${fmt(declared)}</span>`:''}
+          ${!isFullyReceived&&declared>0?`<span style="font-size:11px;color:var(--warn)">Falta: ${fmt(remaining)}</span>`:''}
         </div>
       </div>
+      ${collapsed?'':`
       ${declared>0&&estArrLabel?`<div style="padding:6px 14px;font-size:11px;color:#4c1d95;background:#f5f3ff;border-bottom:1px solid #ede9fe">
         📨 Estimativa de chegada: <strong>${estArrLabel}</strong>${isPast&&!isFullyReceived?' <span style="color:var(--danger);font-weight:700">⚠ Em atraso</span>':''}
       </div>`:''}
@@ -2514,7 +2534,7 @@ function renderSegurosArrivals(){
             <span style="color:var(--success);font-weight:600">✓</span>
             <span style="color:var(--text-sm)">${r.date}</span>
             <span style="margin-left:auto;font-weight:700;color:var(--success)">${fmt(r.amount)}</span>
-            <button onclick="deleteSegReceipt('${declDate}','${r.id}')"
+            <button onclick="event.stopPropagation();deleteSegReceipt('${declDate}','${r.id}')"
               style="background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:15px;padding:0 3px">×</button>
           </div>`).join('')+`</div>`:''}
         ${declared>0&&!isFullyReceived?`
@@ -2536,7 +2556,7 @@ function renderSegurosArrivals(){
           </div>`
         :isFullyReceived?`<div style="text-align:center;padding:6px;font-size:12px;color:var(--success);font-weight:700">✓ Totalmente recebido — ${fmt(totalRec)}</div>`
         :`<div style="font-size:12px;color:var(--text-sm);font-style:italic">Declaração ainda não efectuada — edita o dia para adicionar o valor real.</div>`}
-      </div>
+      </div>`}
     </div>`;
   }).join('');
 }
