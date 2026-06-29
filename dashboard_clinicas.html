@@ -2145,6 +2145,7 @@ function saveBal(id){
   S.balances[id]=v;save();document.getElementById('bd-'+id).textContent=fmt(v);cancelEdit(id);updateKpis();projBuilt=false;
 }
 function updateKpis(){
+  projBuilt=false; // invalidate cache on every data change
   // Main saldos KPIs — exclude holding
   document.getElementById('kpi-total').textContent=fmt(getTotalSaldo());
   const cm=curMonth();
@@ -2160,6 +2161,7 @@ function updateKpis(){
   ne.textContent=fmtSigned(net);ne.className='kpi-val '+(net>=0?'green':'red');
   updateAlerts();
   renderPendingPayments();
+  if(currentTab==='projections'&&!projBuilt) buildProjections();
 }
 
 function updateAlerts(){
