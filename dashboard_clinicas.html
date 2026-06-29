@@ -1454,12 +1454,6 @@ function getRemainingOutForMonth(monthKey){
   (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{
     out+=f.amount;
   });
-  // ZZP'ers: sum toPay for this month
-  const zzpRows=(S.zzpPayments&&S.zzpPayments[monthKey])||[];
-  zzpRows.forEach(r=>{ out+=(r.expectedValue||0)*(r.percentage||0)/100; });
-  // Medewerkers: sum toPay for this month
-  const medRows=(S.medPayments&&S.medPayments[monthKey])||[];
-  medRows.forEach(r=>{ out+=(r.expectedValue||0)*(r.percentage||0)/100; });
   return out;
 }
 function getPlannedOut(){
