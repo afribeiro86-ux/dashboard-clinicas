@@ -1131,6 +1131,38 @@ tr:hover td{background:#f8fafc}
 
 <!-- ══════ MODAL: DELETE ══════ -->
 <!-- ══ Relatório Mensal Modal ══ -->
+<!-- ══ Editar Dividendo/Injeção Modal ══ -->
+<div class="modal-bg" id="editDivModal">
+  <div class="modal" style="width:440px">
+    <div class="modal-header"><h3 id="editDivModalTitle">✏ Editar registo</h3></div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg"><label>Data</label><input type="date" id="editDiv-date"></div>
+        <div class="fg"><label>Valor (€)</label><input type="number" id="editDiv-amount" step="0.01" min="0"></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label id="editDiv-acct-label">Conta</label>
+          <select id="editDiv-account" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card)">
+            <option value="centrum_ing">Centrum · ING</option>
+            <option value="centrum_abn">Centrum · ABN AMRO</option>
+            <option value="castor_ing">Lemmer Castor · ING</option>
+            <option value="castor_rabo">Lemmer Castor · Rabobank</option>
+            <option value="sloten_ing">Sloten · ING</option>
+            <option value="sloten_rabo">Sloten · Rabobank</option>
+            <option value="lt_ing">Lemster Tandhuis · ING</option>
+            <option value="lt_abn">Lemster Tandhuis · ABN AMRO</option>
+            <option value="holding_ing">Holding · ING</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Notas</label><input type="text" id="editDiv-notes" placeholder="opcional"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('editDivModal').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmEditDivEntry()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="reportModal">
   <div class="modal" style="width:680px;max-width:96vw">
     <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between">
@@ -3670,6 +3702,39 @@ function deleteDividend(id){
   fbSavePrivado();
   renderDividendos();
 }
+let editDivType=null; // 'div' or 'inj'
+let editDivId=null;
+function openEditDivEntry(type, id){
+  const arr=type==='div'?(P.dividends||[]):(P.injections||[]);
+  const entry=arr.find(d=>d.id===id);
+  if(!entry)return;
+  editDivType=type; editDivId=id;
+  document.getElementById('editDivModalTitle').textContent=type==='div'?'✏ Editar Retirada / Dividendo':'✏ Editar Injeção / Pagamento';
+  document.getElementById('editDiv-acct-label').textContent=type==='div'?'Conta de origem':'Conta de destino';
+  document.getElementById('editDiv-date').value=entry.date;
+  document.getElementById('editDiv-amount').value=entry.amount;
+  document.getElementById('editDiv-account').value=entry.account;
+  document.getElementById('editDiv-notes').value=entry.notes||'';
+  document.getElementById('editDivModal').classList.add('open');
+}
+function confirmEditDivEntry(){
+  const date=document.getElementById('editDiv-date').value;
+  const amount=parseFloat(document.getElementById('editDiv-amount').value)||0;
+  const account=document.getElementById('editDiv-account').value;
+  const notes=document.getElementById('editDiv-notes').value.trim();
+  if(!date){alert('Indica a data.');return;}
+  if(!amount){alert('Indica o valor.');return;}
+  const arr=editDivType==='div'?(P.dividends||[]):(P.injections||[]);
+  const entry=arr.find(d=>d.id===editDivId);
+  if(!entry)return;
+  entry.date=date; entry.amount=amount; entry.account=account; entry.notes=notes;
+  arr.sort((a,b)=>b.date.localeCompare(a.date));
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));
+  fbSavePrivado();
+  document.getElementById('editDivModal').classList.remove('open');
+  renderDividendos();
+}
+
 function addInjection(){
   const date=document.getElementById('inj-date').value;
   const account=document.getElementById('inj-account').value;
@@ -3732,6 +3797,7 @@ function renderDividendos(){
       const byAcct={};
       rows.forEach(d=>{byAcct[d.account]=(byAcct[d.account]||0)+d.amount;});
       const acctBadges=Object.entries(byAcct).map(([a,v])=>`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${divBankColor(a)}22;color:${divBankColor(a)};font-weight:600">${DIV_ACCOUNT_LABELS[a]||a}: ${fmt(v)}</span>`).join('');
+      const entryType=deleteFn==='deleteDividend'?'div':'inj';
       const tRows=rows.map(d=>{
         const dt=new Date(d.date+'T12:00:00');
         const dLabel=`${String(dt.getDate()).padStart(2,'0')} ${MONTHS_SHORT[dt.getMonth()]}`;
@@ -3740,7 +3806,10 @@ function renderDividendos(){
           <td><span style="font-size:12px;padding:2px 8px;border-radius:10px;background:${divBankColor(d.account)}22;color:${divBankColor(d.account)};font-weight:600">${DIV_ACCOUNT_LABELS[d.account]||d.account}</span></td>
           <td style="text-align:right;font-weight:700;font-size:14px;color:${amtColor}">${fmt(d.amount)}</td>
           <td style="font-size:12px;color:var(--text-sm)">${d.notes||''}</td>
-          <td style="text-align:right"><button onclick="${deleteFn}('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-sm);padding:0 4px" title="Eliminar">×</button></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button onclick="openEditDivEntry('${entryType}','${d.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--primary);padding:0 4px" title="Editar">✏</button>
+            <button onclick="${deleteFn}('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-sm);padding:0 4px" title="Eliminar">×</button>
+          </td>
         </tr>`;
       }).join('');
       return`<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden${parseInt(year)===thisYear?';border-color:'+amtColor+'44':''}" >
