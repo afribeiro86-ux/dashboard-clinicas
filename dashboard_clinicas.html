@@ -224,6 +224,8 @@ tr:hover td{background:#f8fafc}
   <div class="tab" data-tab="privado">Privado</div>
 </div>
 
+<div id="alert-bar" style="display:none;padding:8px 24px;background:#fef2f2;border-bottom:1px solid #fecaca;gap:8px;flex-wrap:wrap;align-items:center"></div>
+
 <div class="content">
 
 <!-- ══════ SALDOS ══════ -->
@@ -237,6 +239,15 @@ tr:hover td{background:#f8fafc}
   <div class="card">
     <div class="card-title">Saldos Actuais <span class="card-title-note">Clica numa conta para editar</span></div>
     <div id="accGrid"></div>
+  </div>
+
+  <!-- O que falta pagar -->
+  <div class="card" id="pending-pay-card">
+    <div class="card-title">
+      📋 O que falta pagar
+      <span class="card-title-note" id="pending-pay-month-label"></span>
+    </div>
+    <div id="pending-pay-list"></div>
   </div>
 </div>
 
@@ -268,8 +279,9 @@ tr:hover td{background:#f8fafc}
 
     <!-- Month total bar -->
     <div class="info-total-bar">
-      <div class="info-total-item">Previsto Infomedics: <strong id="info-total-chairs">0 cad.</strong></div>
-      <div class="info-total-item" style="margin-left:auto">= <strong id="info-total-val" style="color:var(--success);font-size:18px">€ 0</strong></div>
+      <div class="info-total-item">Previsto: <strong id="info-total-chairs">0 cad.</strong></div>
+      <div class="info-total-item">= <strong id="info-total-val" style="color:var(--success);font-size:18px">€ 0</strong></div>
+      <div class="info-total-item" style="margin-left:auto;border-left:1px solid #a5f3fc;padding-left:14px">Média: <strong id="info-avg-kpi" style="color:var(--primary)">—</strong></div>
     </div>
 
     <!-- Expected payments timeline -->
@@ -394,7 +406,10 @@ tr:hover td{background:#f8fafc}
     <div class="filter-row">
       <label>Mês:</label>
       <select id="in-filter-month" onchange="renderEntryTable('entrada')"></select>
+      <input id="in-search" type="text" placeholder="🔍 pesquisar..." oninput="renderEntryTable('entrada')"
+        style="border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;width:150px">
       <div class="month-total">Total: <span id="in-month-total" style="color:var(--success);font-size:14px">€ 0</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV('entrada')" style="margin-left:auto">⬇ CSV</button>
     </div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>Data</th><th>Clínica</th><th>Banco</th><th>Categoria</th><th>Notas</th><th style="text-align:right">Valor</th><th></th></tr></thead>
@@ -449,7 +464,10 @@ tr:hover td{background:#f8fafc}
     <div class="filter-row">
       <label>Mês:</label>
       <select id="out-filter-month" onchange="renderEntryTable('saida')"></select>
+      <input id="out-search" type="text" placeholder="🔍 pesquisar..." oninput="renderEntryTable('saida')"
+        style="border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;width:150px">
       <div class="month-total">Total: <span id="out-month-total" style="color:var(--danger);font-size:14px">€ 0</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV('saida')" style="margin-left:auto">⬇ CSV</button>
     </div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>Data</th><th>Categoria</th><th>Conta</th><th>Notas</th><th style="text-align:right">Valor</th><th></th></tr></thead>
@@ -975,10 +993,30 @@ tr:hover td{background:#f8fafc}
 </div>
 
 <!-- ══════ MODAL: DELETE ══════ -->
+<div class="modal-bg" id="editEntryModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header"><h3>✏ Editar registo</h3></div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg"><label>Data</label><input type="date" id="edit-date"></div>
+        <div class="fg"><label>Valor (€)</label><input type="number" id="edit-amount" step="0.01" min="0"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notas</label><input type="text" id="edit-notes"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditEntry()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmEditEntry()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="delModal">
   <div class="modal" style="width:320px">
     <div class="modal-header"><h3>Confirmar eliminação</h3></div>
-    <div class="modal-body"><p style="font-size:14px;color:var(--text-sm);line-height:1.5">Tens a certeza que queres eliminar este registo?</p></div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text-sm);line-height:1.5">Tens a certeza que queres eliminar este registo?</p>
+      <div id="del-impact" style="display:none;margin-top:10px;padding:8px 12px;background:var(--danger-lt);border-radius:8px;font-size:12px;color:var(--danger)"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeDelModal()">Cancelar</button>
       <button class="btn btn-danger" onclick="confirmDelete()">Eliminar</button>
@@ -1109,7 +1147,7 @@ function fbSavePrivado(){
 }
 
 function fbRenderAll(){
-  renderSaldos();updateKpis();populateMonthFilters();
+  renderSaldos();updateKpis();renderPendingPayments();populateMonthFilters();
   renderEntryTable('entrada');renderEntryTable('saida');
   renderInfomedicsPanel();renderSegurosPanel();renderOutrosPanel();
   populateRecCatSelect('rec-cat');
@@ -1407,17 +1445,21 @@ function getRemainingIncomeForMonth(monthKey){
 // All unpaid outgoings for a month — counts everything not yet marked as paid,
 // including overdue items (past due date but not paid yet stay "por pagar" in projections)
 function getRemainingOutForMonth(monthKey){
-  const [y,m]=monthKey.split('-').map(Number);
-  const daysInMonth=new Date(y,m,0).getDate();
   let out=0;
   (S.recurringOut||[]).forEach(r=>{
     const entry=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
-    if(entry) return; // already paid — skip
-    out+=getRecAmount(r.id,monthKey); // unpaid: include regardless of due date
+    if(entry) return;
+    out+=getRecAmount(r.id,monthKey);
   });
   (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{
-    out+=f.amount; // unpaid factura: include regardless of due date
+    out+=f.amount;
   });
+  // ZZP'ers: sum toPay for this month
+  const zzpRows=(S.zzpPayments&&S.zzpPayments[monthKey])||[];
+  zzpRows.forEach(r=>{ out+=(r.expectedValue||0)*(r.percentage||0)/100; });
+  // Medewerkers: sum toPay for this month
+  const medRows=(S.medPayments&&S.medPayments[monthKey])||[];
+  medRows.forEach(r=>{ out+=(r.expectedValue||0)*(r.percentage||0)/100; });
   return out;
 }
 function getPlannedOut(){
@@ -2116,6 +2158,121 @@ function updateKpis(){
   document.getElementById('kpi-out-sub').textContent=outE.length+' registos';
   const net=inSum-outSum;const ne=document.getElementById('kpi-net');
   ne.textContent=fmtSigned(net);ne.className='kpi-val '+(net>=0?'green':'red');
+  updateAlerts();
+  renderPendingPayments();
+}
+
+function updateAlerts(){
+  const bar=document.getElementById('alert-bar');
+  if(!bar) return;
+  const alerts=[];
+  const todayStr=today();
+
+  // 1. Projected negative balance in next 6 months
+  const now=new Date();
+  let runBal=getTotalSaldo();
+  for(let i=0;i<6;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    runBal+=getRemainingIncomeForMonth(k)-getRemainingOutForMonth(k);
+    if(runBal<0){
+      alerts.push(`<span style="font-size:12px;font-weight:700;color:var(--danger)">⚠️ Saldo negativo em ${mLabel(k)}: ${fmt(runBal)}</span>`);
+      break; // only show first month
+    }
+  }
+
+  // 2. Overdue facturas
+  const overdueFacs=(S.facturas||[]).filter(f=>!f.paidEntryId&&facCalDate(f)<todayStr);
+  if(overdueFacs.length)
+    alerts.push(`<span style="font-size:12px;font-weight:700;color:var(--danger)" onclick="switchTab('saidas')" style="cursor:pointer">📄 ${overdueFacs.length} factura${overdueFacs.length>1?'s':''} em atraso</span>`);
+
+  // 3. Overdue recurring (past due day, unpaid)
+  const [cy,cm2]=curMonth().split('-').map(Number);
+  const overdueRec=(S.recurringOut||[]).filter(r=>{
+    const dueDate=`${cy}-${String(cm2).padStart(2,'0')}-${String(r.day).padStart(2,'0')}`;
+    if(dueDate>=todayStr) return false;
+    return !(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===curMonth());
+  });
+  if(overdueRec.length)
+    alerts.push(`<span style="font-size:12px;font-weight:700;color:var(--warn)">🔔 ${overdueRec.length} pagamento${overdueRec.length>1?'s':''} recorrente${overdueRec.length>1?'s':''} em atraso</span>`);
+
+  if(alerts.length){
+    bar.style.display='flex';
+    bar.innerHTML=alerts.join('<span style="color:#fca5a5;margin:0 4px">·</span>');
+  } else {
+    bar.style.display='none';
+  }
+}
+
+function renderPendingPayments(){
+  const el=document.getElementById('pending-pay-list');
+  if(!el) return;
+  const todayStr=today();
+  const cm=curMonth();
+  const [cy,cmo]=cm.split('-').map(Number);
+  const lbl=document.getElementById('pending-pay-month-label');
+  if(lbl) lbl.textContent=mLabelFull(cm);
+
+  const items=[];
+
+  // Overdue recurring (past due day this month, not paid)
+  (S.recurringOut||[]).forEach(r=>{
+    const paid=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===cm);
+    if(paid) return;
+    const dueDate=`${cy}-${String(cmo).padStart(2,'0')}-${String(r.day).padStart(2,'0')}`;
+    const isOverdue=dueDate<todayStr;
+    items.push({type:'rec',label:r.name,amount:getRecAmount(r.id,cm),due:dueDate,overdue:isOverdue,cat:r.category,acc:r.account});
+  });
+
+  // Unpaid facturas (overdue or due this month)
+  (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===cm).forEach(f=>{
+    const isOverdue=facCalDate(f)<todayStr;
+    items.push({type:'fac',label:f.creditor,amount:f.amount,due:facCalDate(f),overdue:isOverdue,cat:f.category,acc:f.account});
+  });
+  // Also facturas from past months still unpaid
+  (S.facturas||[]).filter(f=>!f.paidEntryId&&facCalDate(f)<cm+'-01').forEach(f=>{
+    items.push({type:'fac',label:f.creditor,amount:f.amount,due:facCalDate(f),overdue:true,cat:f.category,acc:f.account});
+  });
+
+  // Seguros pending for current month
+  const segCal=(S.seguros&&S.seguros.calendar)||{};
+  Object.keys(segCal).filter(d=>d.startsWith(cm)).forEach(d=>{
+    const entry=segCal[d];
+    if(!entry||!entry.declared) return;
+    const totalRec=(entry.receipts||[]).reduce((s,r)=>s+r.amount,0);
+    const remaining=entry.declared-totalRec;
+    if(remaining>0.005){
+      const arrDate=segurosArrival(d);
+      const isOverdue=arrDate<todayStr;
+      items.push({type:'seg',label:'Seguros decl. '+d,amount:remaining,due:arrDate,overdue:isOverdue,cat:'Seguro Direto',acc:'castor_rabo'});
+    }
+  });
+
+  items.sort((a,b)=>a.due.localeCompare(b.due));
+
+  if(!items.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--success);font-style:italic">✓ Tudo pago este mês!</p>';
+    return;
+  }
+
+  const total=items.reduce((s,i)=>s+i.amount,0);
+  const icons={rec:'🔁',fac:'📄',seg:'🏦'};
+  el.innerHTML=items.map(i=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span>${icons[i.type]}</span>
+      <div style="flex:1">
+        <span style="font-weight:600">${i.label}</span>
+        <span style="font-size:11px;color:var(--text-sm);margin-left:6px">${i.cat||''} · ${accLabel(i.acc)}</span>
+      </div>
+      <span style="font-size:11px;${i.overdue?'color:var(--danger);font-weight:700':'color:var(--text-sm)'}">
+        ${i.overdue?'⚠ em atraso':'vence '+i.due.slice(8)}
+      </span>
+      <span style="font-weight:700;color:var(--danger);white-space:nowrap">− ${fmt(i.amount)}</span>
+    </div>`).join('')+
+  `<div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:2px solid var(--border)">
+    <span style="font-size:12px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px">Total em falta</span>
+    <span style="font-size:18px;font-weight:800;color:var(--danger)">${fmt(total)}</span>
+  </div>`;
 }
 
 // ═══════════════════════════════
@@ -2157,6 +2314,8 @@ function renderInfomedicsPanel(){
   const totalAmt=getAllClinicsAmount(infoMonth);
   document.getElementById('info-total-chairs').textContent=totalChairs+' cad.';
   document.getElementById('info-total-val').textContent=fmt(totalAmt);
+  const avgKpi=document.getElementById('info-avg-kpi');
+  if(avgKpi) avgKpi.textContent=totalChairs>0?fmt(totalAmt/totalChairs)+'/cad.':'—';
   const avgBar=document.getElementById('info-avg-bar');
   const avgVal=document.getElementById('info-avg-val');
   if(avgBar&&avgVal){
@@ -3890,7 +4049,7 @@ function outDayPay(recId,dateStr,defaultAmt){
   const r=S.recurringOut.find(x=>x.id===recId);if(!r)return;
   pendingOutRecId=recId;
   document.getElementById('cout-title').textContent='Registar: '+r.name;
-  document.getElementById('cout-date').value=dateStr;
+  document.getElementById('cout-date').value=dateStr<=today()?today():dateStr;
   document.getElementById('cout-amount').value=parseFloat(defaultAmt).toFixed(2);
   document.getElementById('cout-notes').value=r.notes||'';
   closeOutDayPopup();
@@ -3967,31 +4126,144 @@ function addEntry(type){
 }
 function renderEntryTable(type){
   const isIn=type==='entrada';
-  const month=document.getElementById(isIn?'in-filter-month':'out-filter-month').value;
-  const entries=S.entries.filter(e=>e.type===type&&(!month||mKey(e.date)===month)).sort((a,b)=>b.date.localeCompare(a.date));
+  const monthSel=document.getElementById(isIn?'in-filter-month':'out-filter-month');
+  const month=monthSel?monthSel.value:'';
+  const searchEl=document.getElementById(isIn?'in-search':'out-search');
+  const searchTerm=searchEl?searchEl.value.toLowerCase():'';
+  let entries=S.entries.filter(e=>e.type===type&&(!month||mKey(e.date)===month));
+  if(searchTerm) entries=entries.filter(e=>
+    (e.notes||'').toLowerCase().includes(searchTerm)||
+    (e.category||'').toLowerCase().includes(searchTerm)||
+    (e.date||'').includes(searchTerm)||
+    String(e.amount).includes(searchTerm)||
+    (CLINIC_NAMES[e.clinic]||e.clinic||'').toLowerCase().includes(searchTerm)||
+    (accLabel(e.account)||'').toLowerCase().includes(searchTerm)
+  );
+  entries=entries.sort((a,b)=>b.date.localeCompare(a.date));
   const total=entries.reduce((s,e)=>s+e.amount,0);
   document.getElementById(isIn?'in-month-total':'out-month-total').textContent=fmt(total);
   const tbody=document.getElementById(isIn?'in-table':'out-table');
-  if(!entries.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="7">Sem registos para este mês</td></tr>`;return;}
+  if(!entries.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="7">Sem registos</td></tr>`;return;}
   tbody.innerHTML=entries.map(e=>{
     const recTag=e.recurringOutId?'<span style="font-size:10px;background:var(--primary-lt);color:var(--primary);padding:1px 5px;border-radius:5px;margin-left:4px">prev.</span>':'';
-    if(isIn)return `<tr><td>${e.date}</td><td>${CLINIC_NAMES[e.clinic]||e.clinic||'—'}</td><td>${e.bank||'—'}</td><td>${e.category||'—'}</td><td style="color:var(--text-sm)">${e.notes||'—'}</td><td class="amt-pos" style="text-align:right">${fmt(e.amount)}</td><td><button class="btn-del" onclick="askDel('${e.id}')">🗑</button></td></tr>`;
-    return `<tr><td>${e.date}</td><td>${e.category||'—'}${recTag}</td><td style="font-size:12px;color:var(--text-sm)">${accLabel(e.account)}</td><td style="color:var(--text-sm)">${e.notes||'—'}</td><td class="amt-neg" style="text-align:right">− ${fmt(e.amount)}</td><td><button class="btn-del" onclick="askDel('${e.id}')">🗑</button></td></tr>`;
+    const editBtn=`<button class="btn-del" onclick="openEditEntry('${e.id}')" title="Editar" style="color:#94a3b8;font-size:14px">✏</button>`;
+    if(isIn)return `<tr><td>${e.date}</td><td>${CLINIC_NAMES[e.clinic]||e.clinic||'—'}</td><td>${e.bank||'—'}</td><td>${e.category||'—'}</td><td style="color:var(--text-sm)">${e.notes||'—'}</td><td class="amt-pos" style="text-align:right">${fmt(e.amount)}</td><td style="display:flex;gap:2px">${editBtn}<button class="btn-del" onclick="askDel('${e.id}')">🗑</button></td></tr>`;
+    return `<tr><td>${e.date}</td><td>${e.category||'—'}${recTag}</td><td style="font-size:12px;color:var(--text-sm)">${accLabel(e.account)}</td><td style="color:var(--text-sm)">${e.notes||'—'}</td><td class="amt-neg" style="text-align:right">− ${fmt(e.amount)}</td><td style="display:flex;gap:2px">${editBtn}<button class="btn-del" onclick="askDel('${e.id}')">🗑</button></td></tr>`;
   }).join('');
+}
+
+// ═══════════════════════════════
+//  CSV EXPORT
+// ═══════════════════════════════
+function exportCSV(type){
+  const isIn=type==='entrada';
+  const monthSel=document.getElementById(isIn?'in-filter-month':'out-filter-month');
+  const month=monthSel?monthSel.value:'';
+  let entries=S.entries.filter(e=>e.type===type&&(!month||mKey(e.date)===month))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const rows=isIn
+    ?[['Data','Clínica','Banco','Categoria','Notas','Valor']]
+    :[['Data','Categoria','Conta','Notas','Valor']];
+  entries.forEach(e=>{
+    if(isIn) rows.push([e.date,CLINIC_NAMES[e.clinic]||e.clinic||'',e.bank||'',e.category||'',e.notes||'',e.amount.toFixed(2).replace('.',',')]);
+    else rows.push([e.date,e.category||'',accLabel(e.account)||'',e.notes||'',(e.amount).toFixed(2).replace('.',',')]);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`${type}_${month||'todos'}.csv`;
+  a.click();
+}
+
+// ═══════════════════════════════
+//  EDIT ENTRY
+// ═══════════════════════════════
+let editEntryId=null;
+function openEditEntry(id){
+  const e=S.entries.find(x=>x.id===id);
+  if(!e) return;
+  editEntryId=id;
+  document.getElementById('edit-date').value=e.date;
+  document.getElementById('edit-amount').value=e.amount.toFixed(2);
+  document.getElementById('edit-notes').value=e.notes||'';
+  document.getElementById('editEntryModal').classList.add('open');
+}
+function closeEditEntry(){editEntryId=null;document.getElementById('editEntryModal').classList.remove('open');}
+function confirmEditEntry(){
+  if(!editEntryId) return;
+  const e=S.entries.find(x=>x.id===editEntryId);
+  if(!e){closeEditEntry();return;}
+  const newDate=document.getElementById('edit-date').value;
+  const newAmount=parseFloat(document.getElementById('edit-amount').value)||0;
+  const newNotes=document.getElementById('edit-notes').value.trim();
+  if(!newDate||newAmount<=0){alert('Preenche a data e o valor.');return;}
+  // Adjust balance if amount changed for tracked entries
+  const diff=newAmount-e.amount;
+  if(diff!==0){
+    if(e.infomedicsKey||e.infomedicsAltKeys){
+      const accId=e.clinic?e.clinic+'_ing':null;
+      if(accId&&S.balances[accId]!=null) S.balances[accId]+=diff;
+    } else if(e.segurosReceiptDate){
+      if(S.balances['castor_rabo']!=null) S.balances['castor_rabo']+=diff;
+    }
+  }
+  e.date=newDate; e.amount=newAmount; e.notes=newNotes;
+  save(); closeEditEntry();
+  renderEntryTable(e.type); renderSaldos(); updateKpis(); projBuilt=false;
 }
 
 // ═══════════════════════════════
 //  DELETE
 // ═══════════════════════════════
 let pendingDel=null;
-function askDel(id){pendingDel=id;document.getElementById('delModal').classList.add('open');}
+function askDel(id){
+  pendingDel=id;
+  const e=S.entries.find(x=>x.id===id);
+  const imp=document.getElementById('del-impact');
+  if(e&&imp){
+    // Determine which account balance will be affected
+    let accId=null;
+    if(e.infomedicsKey||e.infomedicsAltKeys){
+      // Infomedics entries go to clinic_ing
+      accId=e.clinic?e.clinic+'_ing':null;
+    } else if(e.segurosReceiptDate){
+      accId='castor_rabo';
+    } else if(e.holdingIncomeId||e.holdingRecurringId){
+      accId='holding_ing';
+    } else if(e.account){
+      accId=e.account;
+    }
+    if(accId){
+      const sign=e.type==='entrada'?'-1':'1';
+      imp.style.display='';
+      imp.innerHTML=`⚠️ Isto vai ${e.type==='entrada'?'subtrair':'adicionar'} <strong>${fmt(e.amount)}</strong> ao saldo de <strong>${accLabel(accId)}</strong>`;
+    } else {
+      imp.style.display='none';
+    }
+  }
+  document.getElementById('delModal').classList.add('open');
+}
 function closeDelModal(){pendingDel=null;document.getElementById('delModal').classList.remove('open');}
 function confirmDelete(){
   if(!pendingDel)return;
   const e=S.entries.find(x=>x.id===pendingDel);
+  if(e){
+    // Reverse balance impact
+    if(e.infomedicsKey||e.infomedicsAltKeys){
+      const accId=e.clinic?e.clinic+'_ing':null;
+      if(accId&&S.balances[accId]!=null) S.balances[accId]-=e.amount;
+    } else if(e.segurosReceiptDate){
+      if(S.balances['castor_rabo']!=null) S.balances['castor_rabo']-=e.amount;
+    } else if(e.holdingIncomeId){
+      if(S.balances['holding_ing']!=null) S.balances['holding_ing']-=e.amount;
+    } else if(e.holdingRecurringId){
+      if(S.balances['holding_ing']!=null) S.balances['holding_ing']+=e.amount;
+    }
+  }
   S.entries=S.entries.filter(x=>x.id!==pendingDel);save();closeDelModal();
   populateMonthFilters();if(e)renderEntryTable(e.type);
-  renderOutCalendar();updateKpis();projBuilt=false;
+  renderSaldos();renderOutCalendar();updateKpis();projBuilt=false;
 }
 
 // Close modals on backdrop click
