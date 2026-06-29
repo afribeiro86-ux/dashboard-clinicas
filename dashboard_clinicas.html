@@ -882,21 +882,22 @@ tr:hover td{background:#f8fafc}
   </div>
   </div><!-- /priv-sub-saldos -->
 
-  <!-- ── Dividendos BV→Privado ── -->
+  <!-- ── Dividendos / Movimentos ── -->
   <div class="subtab-panel" id="priv-sub-dividendos">
 
-    <!-- KPIs -->
-    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
-      <div class="kpi green"><div class="kpi-label">Este Ano</div><div class="kpi-val green" id="div-kpi-year">€ 0</div><div class="kpi-sub" id="div-kpi-year-sub">0 transferências</div></div>
-      <div class="kpi blue"><div class="kpi-label">Total Acumulado</div><div class="kpi-val blue" id="div-kpi-total">€ 0</div><div class="kpi-sub" id="div-kpi-total-sub">todos os anos</div></div>
-      <div class="kpi" style="--kpi-color:#7c3aed"><div class="kpi-label">Média Anual</div><div class="kpi-val" id="div-kpi-avg" style="color:#7c3aed">€ 0</div><div class="kpi-sub" id="div-kpi-avg-sub">por ano</div></div>
+    <!-- Net summary KPIs -->
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:0">
+      <div class="kpi green"><div class="kpi-label">Retiradas (total)</div><div class="kpi-val green" id="div-kpi-total">€ 0</div><div class="kpi-sub" id="div-kpi-total-sub">BV → Privado</div></div>
+      <div class="kpi red"><div class="kpi-label">Injetado (total)</div><div class="kpi-val red" id="inj-kpi-total">€ 0</div><div class="kpi-sub" id="inj-kpi-total-sub">Privado → Clínica</div></div>
+      <div class="kpi blue"><div class="kpi-label">Balanço Líquido</div><div class="kpi-val blue" id="div-kpi-net">€ 0</div><div class="kpi-sub">retiradas − injeções</div></div>
+      <div class="kpi" style="--kpi-color:#7c3aed"><div class="kpi-label">Retiradas Este Ano</div><div class="kpi-val" id="div-kpi-year" style="color:#7c3aed">€ 0</div><div class="kpi-sub" id="div-kpi-year-sub">—</div></div>
     </div>
 
-    <!-- Form -->
+    <!-- ── BV → Privado ── -->
     <div class="card">
-      <div class="card-title">＋ Registar Levantamento</div>
+      <div class="card-title" style="color:var(--success)">💸 BV → Privado · Retiradas / Dividendos</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:120px">
+        <div style="flex:1;min-width:110px">
           <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Data</label>
           <input type="date" id="div-date" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
         </div>
@@ -914,12 +915,12 @@ tr:hover td{background:#f8fafc}
             <option value="holding_ing">Holding · ING</option>
           </select>
         </div>
-        <div style="flex:1;min-width:110px">
+        <div style="flex:1;min-width:100px">
           <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Valor (€)</label>
           <input type="number" id="div-amount" placeholder="0.00" step="0.01" min="0"
             style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
         </div>
-        <div style="flex:2;min-width:150px">
+        <div style="flex:2;min-width:140px">
           <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Notas (opcional)</label>
           <input type="text" id="div-notes" placeholder="ex: dividendo Q1, salário..."
             style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
@@ -927,9 +928,44 @@ tr:hover td{background:#f8fafc}
         <button class="btn btn-primary" onclick="addDividend()" style="padding:7px 16px;margin-bottom:1px;white-space:nowrap">＋ Adicionar</button>
       </div>
     </div>
-
-    <!-- List by year -->
     <div id="div-list"></div>
+
+    <!-- ── Privado → Clínica ── -->
+    <div class="card" style="margin-top:8px">
+      <div class="card-title" style="color:var(--danger)">🏦 Privado → Clínica · Injeções / Empréstimos</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:110px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Data</label>
+          <input type="date" id="inj-date" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <div style="flex:1.5;min-width:150px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Conta de destino</label>
+          <select id="inj-account" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card)">
+            <option value="centrum_ing">Centrum · ING</option>
+            <option value="centrum_abn">Centrum · ABN AMRO</option>
+            <option value="castor_ing">Lemmer Castor · ING</option>
+            <option value="castor_rabo">Lemmer Castor · Rabobank</option>
+            <option value="sloten_ing">Sloten · ING</option>
+            <option value="sloten_rabo">Sloten · Rabobank</option>
+            <option value="lt_ing">Lemster Tandhuis · ING</option>
+            <option value="lt_abn">Lemster Tandhuis · ABN AMRO</option>
+            <option value="holding_ing">Holding · ING</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:100px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Valor (€)</label>
+          <input type="number" id="inj-amount" placeholder="0.00" step="0.01" min="0"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <div style="flex:2;min-width:140px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Notas (opcional)</label>
+          <input type="text" id="inj-notes" placeholder="ex: empréstimo, adiantamento..."
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <button class="btn" onclick="addInjection()" style="padding:7px 16px;margin-bottom:1px;white-space:nowrap;background:var(--danger);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">＋ Adicionar</button>
+      </div>
+    </div>
+    <div id="inj-list"></div>
 
   </div><!-- /priv-sub-dividendos -->
 
@@ -3487,6 +3523,7 @@ function loadPrivado(){
   if(!Array.isArray(P.expenses))P.expenses=[];
   if(!Array.isArray(P.adhocExpenses))P.adhocExpenses=[];
   if(!Array.isArray(P.dividends))P.dividends=[];
+  if(!Array.isArray(P.injections))P.injections=[];
 }
 function savePrivado(){
   // Read current input values on every save
@@ -3633,88 +3670,103 @@ function deleteDividend(id){
   fbSavePrivado();
   renderDividendos();
 }
+function addInjection(){
+  const date=document.getElementById('inj-date').value;
+  const account=document.getElementById('inj-account').value;
+  const amount=parseFloat(document.getElementById('inj-amount').value)||0;
+  const notes=document.getElementById('inj-notes').value.trim();
+  if(!date){alert('Indica a data.');return;}
+  if(!amount){alert('Indica o valor.');return;}
+  if(!Array.isArray(P.injections))P.injections=[];
+  P.injections.push({id:uid(),date,account,amount,notes});
+  P.injections.sort((a,b)=>b.date.localeCompare(a.date));
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));
+  fbSavePrivado();
+  document.getElementById('inj-amount').value='';
+  document.getElementById('inj-notes').value='';
+  renderDividendos();
+}
+function deleteInjection(id){
+  if(!confirm('Eliminar este registo?'))return;
+  P.injections=(P.injections||[]).filter(d=>d.id!==id);
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));
+  fbSavePrivado();
+  renderDividendos();
+}
+
 function renderDividendos(){
   const divs=P.dividends||[];
+  const injs=P.injections||[];
   const thisYear=new Date().getFullYear();
 
   // KPIs
   const yearDivs=divs.filter(d=>new Date(d.date).getFullYear()===thisYear);
   const yearTotal=yearDivs.reduce((s,d)=>s+d.amount,0);
-  const allTotal=divs.reduce((s,d)=>s+d.amount,0);
-  const years=[...new Set(divs.map(d=>new Date(d.date).getFullYear()))];
-  const avgAnnual=years.length?allTotal/years.length:0;
+  const allDivTotal=divs.reduce((s,d)=>s+d.amount,0);
+  const allInjTotal=injs.reduce((s,d)=>s+d.amount,0);
+  const net=allDivTotal-allInjTotal;
 
-  const kpiYear=document.getElementById('div-kpi-year');
-  if(kpiYear){kpiYear.textContent=fmt(yearTotal);document.getElementById('div-kpi-year-sub').textContent=yearDivs.length+' transferência'+(yearDivs.length!==1?'s':'');}
-  const kpiTotal=document.getElementById('div-kpi-total');
-  if(kpiTotal){kpiTotal.textContent=fmt(allTotal);document.getElementById('div-kpi-total-sub').textContent=divs.length+' transferência'+(divs.length!==1?'s':'');}
-  const kpiAvg=document.getElementById('div-kpi-avg');
-  if(kpiAvg){kpiAvg.textContent=years.length?fmt(avgAnnual):'—';document.getElementById('div-kpi-avg-sub').textContent=years.length?years.length+' ano'+(years.length!==1?'s':''):'sem dados';}
+  const el=id=>document.getElementById(id);
+  if(el('div-kpi-total')){el('div-kpi-total').textContent=fmt(allDivTotal);el('div-kpi-total-sub').textContent=divs.length+' retirada'+(divs.length!==1?'s':'');}
+  if(el('inj-kpi-total')){el('inj-kpi-total').textContent=fmt(allInjTotal);el('inj-kpi-total-sub').textContent=injs.length+' injeção'+(injs.length!==1?'ões':'');}
+  if(el('div-kpi-net')){el('div-kpi-net').textContent=fmt(Math.abs(net));el('div-kpi-net').style.color=net>=0?'var(--success)':'var(--danger)';}
+  if(el('div-kpi-year')){el('div-kpi-year').textContent=fmt(yearTotal);el('div-kpi-year-sub').textContent=yearDivs.length+' transferência'+(yearDivs.length!==1?'s':'');}
 
-  // Init date
-  const dateEl=document.getElementById('div-date');
-  if(dateEl&&!dateEl.value) dateEl.value=today();
+  // Init dates
+  const dEl=el('div-date');if(dEl&&!dEl.value)dEl.value=today();
+  const iEl=el('inj-date');if(iEl&&!iEl.value)iEl.value=today();
 
-  // List grouped by year
-  const listEl=document.getElementById('div-list');
-  if(!listEl)return;
-  if(!divs.length){
-    listEl.innerHTML=`<div class="card"><p style="text-align:center;color:var(--text-sm);font-style:italic;padding:20px 0">Nenhum levantamento registado ainda.</p></div>`;
-    return;
+  // Helper: render grouped-by-year table
+  function renderGrouped(items, listElId, amtColor, deleteFn, acctLabel){
+    const listEl=el(listElId);
+    if(!listEl)return;
+    if(!items.length){
+      listEl.innerHTML=`<p style="text-align:center;color:var(--text-sm);font-style:italic;padding:14px 0;font-size:13px">Nenhum registo ainda.</p>`;
+      return;
+    }
+    const byYear={};
+    items.forEach(d=>{const y=new Date(d.date).getFullYear();if(!byYear[y])byYear[y]=[];byYear[y].push(d);});
+    listEl.innerHTML=Object.keys(byYear).sort((a,b)=>b-a).map(year=>{
+      const rows=byYear[year];
+      const yearSum=rows.reduce((s,d)=>s+d.amount,0);
+      const byAcct={};
+      rows.forEach(d=>{byAcct[d.account]=(byAcct[d.account]||0)+d.amount;});
+      const acctBadges=Object.entries(byAcct).map(([a,v])=>`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${divBankColor(a)}22;color:${divBankColor(a)};font-weight:600">${DIV_ACCOUNT_LABELS[a]||a}: ${fmt(v)}</span>`).join('');
+      const tRows=rows.map(d=>{
+        const dt=new Date(d.date+'T12:00:00');
+        const dLabel=`${String(dt.getDate()).padStart(2,'0')} ${MONTHS_SHORT[dt.getMonth()]}`;
+        return`<tr>
+          <td style="font-size:13px">${dLabel}</td>
+          <td><span style="font-size:12px;padding:2px 8px;border-radius:10px;background:${divBankColor(d.account)}22;color:${divBankColor(d.account)};font-weight:600">${DIV_ACCOUNT_LABELS[d.account]||d.account}</span></td>
+          <td style="text-align:right;font-weight:700;font-size:14px;color:${amtColor}">${fmt(d.amount)}</td>
+          <td style="font-size:12px;color:var(--text-sm)">${d.notes||''}</td>
+          <td style="text-align:right"><button onclick="${deleteFn}('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-sm);padding:0 4px" title="Eliminar">×</button></td>
+        </tr>`;
+      }).join('');
+      return`<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden${parseInt(year)===thisYear?';border-color:'+amtColor+'44':''}" >
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:800">${year}</span>
+            ${parseInt(year)===thisYear?`<span style="font-size:11px;padding:2px 7px;border-radius:8px;background:${amtColor}22;color:${amtColor};font-weight:700">ano atual</span>`:''}
+            ${acctBadges}
+          </div>
+          <span style="font-size:17px;font-weight:800;color:${amtColor}">${fmt(yearSum)}</span>
+        </div>
+        <div class="tbl-wrap" style="margin:0"><table>
+          <thead><tr><th style="width:60px">Data</th><th>${acctLabel}</th><th style="text-align:right">Valor</th><th>Notas</th><th style="width:30px"></th></tr></thead>
+          <tbody>${tRows}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border)">
+            <td colspan="2" style="font-weight:700;padding:8px 4px">Total ${year}</td>
+            <td style="text-align:right;font-weight:800;font-size:15px;color:${amtColor}">${fmt(yearSum)}</td>
+            <td colspan="2"></td>
+          </tr></tfoot>
+        </table></div>
+      </div>`;
+    }).join('');
   }
 
-  // Group by year descending
-  const byYear={};
-  divs.forEach(d=>{
-    const y=new Date(d.date).getFullYear();
-    if(!byYear[y])byYear[y]=[];
-    byYear[y].push(d);
-  });
-
-  listEl.innerHTML=Object.keys(byYear).sort((a,b)=>b-a).map(year=>{
-    const rows=byYear[year];
-    const yearSum=rows.reduce((s,d)=>s+d.amount,0);
-    // Group by account for mini summary
-    const byAcct={};
-    rows.forEach(d=>{byAcct[d.account]=(byAcct[d.account]||0)+d.amount;});
-    const acctSummary=Object.entries(byAcct).map(([a,v])=>`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${divBankColor(a)}22;color:${divBankColor(a)};font-weight:600">${DIV_ACCOUNT_LABELS[a]||a}: ${fmt(v)}</span>`).join('');
-    const tableRows=rows.map(d=>{
-      const dt=new Date(d.date+'T12:00:00');
-      const dLabel=`${String(dt.getDate()).padStart(2,'0')} ${MONTHS_SHORT[dt.getMonth()]}`;
-      return `<tr>
-        <td style="font-size:13px">${dLabel}</td>
-        <td><span style="font-size:12px;padding:2px 8px;border-radius:10px;background:${divBankColor(d.account)}22;color:${divBankColor(d.account)};font-weight:600">${DIV_ACCOUNT_LABELS[d.account]||d.account}</span></td>
-        <td style="text-align:right;font-weight:700;font-size:14px;color:var(--success)">${fmt(d.amount)}</td>
-        <td style="font-size:12px;color:var(--text-sm)">${d.notes||''}</td>
-        <td style="text-align:right"><button onclick="deleteDividend('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-sm);padding:0 4px" title="Eliminar">×</button></td>
-      </tr>`;
-    }).join('');
-    return `<div class="card" style="${parseInt(year)===thisYear?'border:1px solid var(--success)33':''}">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:16px;font-weight:800">${year}</span>
-          ${parseInt(year)===thisYear?'<span style="font-size:11px;padding:2px 7px;border-radius:8px;background:#dcfce7;color:#166534;font-weight:700">ano atual</span>':''}
-          ${acctSummary}
-        </div>
-        <span style="font-size:18px;font-weight:800;color:var(--success)">${fmt(yearSum)}</span>
-      </div>
-      <div class="tbl-wrap"><table>
-        <thead><tr>
-          <th style="width:60px">Data</th>
-          <th>Conta</th>
-          <th style="text-align:right">Valor</th>
-          <th>Notas</th>
-          <th style="width:30px"></th>
-        </tr></thead>
-        <tbody>${tableRows}</tbody>
-        <tfoot><tr style="border-top:2px solid var(--border)">
-          <td colspan="2" style="font-weight:700;padding:8px 4px">Total ${year}</td>
-          <td style="text-align:right;font-weight:800;font-size:15px;color:var(--success)">${fmt(yearSum)}</td>
-          <td colspan="2"></td>
-        </tr></tfoot>
-      </table></div>
-    </div>`;
-  }).join('');
+  renderGrouped(divs,'div-list','var(--success)','deleteDividend','Conta de origem');
+  renderGrouped(injs,'inj-list','var(--danger)','deleteInjection','Conta de destino');
 }
 
 // ═══════════════════════════════
