@@ -407,7 +407,8 @@ tr:hover td{background:#f8fafc}
     <button class="subtab" data-subtab="facturas" onclick="switchSaidaTab('facturas')">📄 Facturas</button>
     <button class="subtab" data-subtab="tecnicos" onclick="switchSaidaTab('tecnicos')">👨‍⚕️ Técnicos</button>
     <button class="subtab" data-subtab="material" onclick="switchSaidaTab('material')">🦷 Material</button>
-    <button class="subtab" data-subtab="zzp" onclick="switchSaidaTab('zzp')">💼 ZZP / %</button>
+    <button class="subtab" data-subtab="zzp" onclick="switchSaidaTab('zzp')">💼 ZZP'ers %</button>
+    <button class="subtab" data-subtab="med" onclick="switchSaidaTab('med')">👥 Medewerkers %</button>
   </div>
 
   <!-- ── Calendário ── -->
@@ -508,9 +509,14 @@ tr:hover td{background:#f8fafc}
     <div id="material-panel"></div>
   </div>
 
-  <!-- ── ZZP / % ── -->
+  <!-- ── ZZP'ers % ── -->
   <div class="subtab-panel" id="saida-sub-zzp">
     <div id="zzp-panel"></div>
+  </div>
+
+  <!-- ── Medewerkers % ── -->
+  <div class="subtab-panel" id="saida-sub-med">
+    <div id="med-panel"></div>
   </div>
 
 </div><!-- /panel-saidas -->
@@ -1221,7 +1227,7 @@ let S = {
   seguros: { dailyDefault: 0, calendar: {} },
   holdingFixedOut: [],
   holdingIncome: { sources: [], calendar: {} },
-  techPayments: {}, materialPayments: {}, zzpPayments: {},
+  techPayments: {}, materialPayments: {}, zzpPayments: {}, medPayments: {},
   outros: { sources: [], calendar: {} },
   settings: { infomedicsPerChair: 1300, outCategories: ['Salários','Huur / Renda','Leasing (DLL/BNP)','Belasting','Material Dentário','Seguro','Contabilidade','Outro'] }
 };
@@ -1266,6 +1272,7 @@ function load(){
       });
       if(!S.materialPayments) S.materialPayments={};
       if(!S.zzpPayments) S.zzpPayments={};
+      if(!S.medPayments) S.medPayments={};
       // Migrate old seguros format: number → {planned:null, declared:number, receipts:[]}
       Object.keys(S.seguros.calendar).forEach(date=>{
         const v=S.seguros.calendar[date];
@@ -1517,6 +1524,7 @@ function switchSaidaTab(name){
   if(name==='tecnicos')   renderTecnicosPanel();
   if(name==='material')   renderMaterialPanel();
   if(name==='zzp')        renderZZPPanel();
+  if(name==='med')        renderMedPanel();
 }
 
 // ─── shared month nav for data tabs ───
@@ -1527,6 +1535,7 @@ function saidaDataNavMonth(delta){
   if(currentSaidaTab==='tecnicos') renderTecnicosPanel();
   if(currentSaidaTab==='material') renderMaterialPanel();
   if(currentSaidaTab==='zzp')      renderZZPPanel();
+  if(currentSaidaTab==='med')      renderMedPanel();
 }
 
 function monthNavBar(labelId){
@@ -1734,7 +1743,7 @@ function renderZZPPanel(){
   if(!el) return;
   el.innerHTML=`
     <div class="card">
-      <div class="card-title">💼 ZZP'ers / Medewerkers por %</div>
+      <div class="card-title">💼 ZZP'ers por %</div>
       ${monthNavBar('zzp-month-label')}
       <div class="tbl-wrap"><table id="zzp-table">
         <thead><tr>
@@ -1806,6 +1815,99 @@ function updateZZPRow(mk,i,field,val){
   // Update grand total
   const grandTotal=rows.reduce((s,r)=>s+(r.expectedValue||0)*(r.percentage||0)/100,0);
   const gtEl=document.getElementById('zzp-grand-total');
+  if(gtEl) gtEl.textContent=fmt(grandTotal);
+}
+
+// ─── MEDEWERKERS ───
+function getMedData(mk){ return (S.medPayments&&S.medPayments[mk])||[]; }
+function saveMedData(mk,rows){ if(!S.medPayments)S.medPayments={}; S.medPayments[mk]=rows; save(); }
+
+function renderMedPanel(){
+  if(!S.medPayments)S.medPayments={};
+  const mk=saidaDataMonth;
+  let rows=getMedData(mk);
+  if(!rows.length){
+    const prev=new Date(mk+'-01');prev.setMonth(prev.getMonth()-1);
+    const pmk=prev.toISOString().slice(0,7);
+    const prevRows=getMedData(pmk);
+    if(prevRows.length) rows=prevRows.map(r=>({id:uid(),name:r.name,daysLeft:0,currentValue:0,expectedValue:0,percentage:r.percentage||0}));
+  }
+  let grandTotal=0;
+  rows.forEach(r=>{grandTotal+=(r.expectedValue||0)*(r.percentage||0)/100;});
+  const el=document.getElementById('med-panel');
+  if(!el) return;
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-title">👥 Medewerkers por %</div>
+      ${monthNavBar('med-month-label')}
+      <div class="tbl-wrap"><table id="med-table">
+        <thead><tr>
+          <th style="min-width:140px">Nome</th>
+          <th style="text-align:right;min-width:80px">Dias rest.</th>
+          <th style="text-align:right;min-width:100px">Val. actual</th>
+          <th style="text-align:right;min-width:110px">Val. esperado</th>
+          <th style="text-align:right;min-width:70px">%</th>
+          <th style="text-align:right;min-width:110px;color:var(--danger)">A pagar</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((r,i)=>{
+            const toPay=(r.expectedValue||0)*(r.percentage||0)/100;
+            return `<tr id="med-row-${i}">
+              <td><input value="${r.name}" onchange="updateMedRow('${mk}',${i},'name',this.value)"
+                style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px"></td>
+              <td style="text-align:right">
+                <input type="number" value="${r.daysLeft||''}" placeholder="0" min="0"
+                  onchange="updateMedRow('${mk}',${i},'daysLeft',this.value)"
+                  style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+              </td>
+              <td style="text-align:right">
+                <input type="number" value="${r.currentValue||''}" placeholder="0" min="0" step="0.01"
+                  onchange="updateMedRow('${mk}',${i},'currentValue',this.value)"
+                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+              </td>
+              <td style="text-align:right">
+                <input type="number" value="${r.expectedValue||''}" placeholder="0" min="0" step="0.01"
+                  onchange="updateMedRow('${mk}',${i},'expectedValue',this.value)"
+                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+              </td>
+              <td style="text-align:right">
+                <input type="number" value="${r.percentage||''}" placeholder="0" min="0" max="100" step="0.1"
+                  onchange="updateMedRow('${mk}',${i},'percentage',this.value)"
+                  style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+              </td>
+              <td id="med-pay-${i}" style="text-align:right;font-weight:700;color:var(--danger);font-size:15px">${fmt(toPay)}</td>
+              <td><button onclick="deleteMedRow('${mk}',${i})"
+                style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button></td>
+            </tr>`;
+          }).join('')}
+          <tr style="border-top:2px solid var(--border);background:var(--bg)">
+            <td colspan="5" style="font-weight:700;font-size:13px;color:var(--text-sm)">Total a pagar</td>
+            <td id="med-grand-total" style="text-align:right;font-weight:800;font-size:16px;color:var(--danger)">${fmt(grandTotal)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <button class="btn btn-ghost btn-sm" onclick="addMedRow('${mk}')" style="margin-top:10px">＋ Adicionar medewerker</button>
+    </div>`;
+}
+function addMedRow(mk){
+  const rows=[...getMedData(mk),{id:uid(),name:'',daysLeft:0,currentValue:0,expectedValue:0,percentage:0}];
+  saveMedData(mk,rows);renderMedPanel();
+}
+function deleteMedRow(mk,i){
+  const rows=getMedData(mk);rows.splice(i,1);saveMedData(mk,rows);renderMedPanel();
+}
+function updateMedRow(mk,i,field,val){
+  const rows=getMedData(mk);
+  if(!rows[i]) return;
+  rows[i][field]=field==='name'?val:parseFloat(val)||0;
+  saveMedData(mk,rows);
+  const toPay=(rows[i].expectedValue||0)*(rows[i].percentage||0)/100;
+  const payCell=document.getElementById('med-pay-'+i);
+  if(payCell) payCell.textContent=fmt(toPay);
+  const grandTotal=rows.reduce((s,r)=>s+(r.expectedValue||0)*(r.percentage||0)/100,0);
+  const gtEl=document.getElementById('med-grand-total');
   if(gtEl) gtEl.textContent=fmt(grandTotal);
 }
 
@@ -2810,7 +2912,10 @@ function renderRecOutList(){
           <button class="btn-del" onclick="deleteRecOut('${r.id}')">🗑</button>
         </div>
       </div>`;
-    }).join('');
+    }).join('')+`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+      <span style="font-size:13px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px">Total mensal recorrente</span>
+      <span style="font-size:18px;font-weight:800;color:var(--danger)">${fmt(sorted.reduce((s,r)=>s+r.amount,0))}</span>
+    </div>`;
 }
 
 // ═══════════════════════════════
@@ -3545,18 +3650,26 @@ function renderOutCalendar(){
     grid.appendChild(cell);
   }
 
-  // Show end-of-month projected balance (includes income arriving after last payment day)
-  // This matches what the Projections table shows for "Saldo Final"
+  // Show end-of-month projected balance using IDENTICAL formula to buildProjections:
+  // start from getTotalSaldo(), add net for each month from app start up to and including mk.
   const finalBalEl=document.getElementById('out-cal-final-bal');
   if(finalBalEl){
     const isFutureMon=mk>curMonth();
     const isCurrentMon=mk===curMonth();
     if(isFutureMon||isCurrentMon){
-      finalBalEl.textContent=`Saldo fim do mês: ${fmt(runBal)}`;
-      finalBalEl.style.color=runBal>=0?'var(--primary)':'var(--danger)';
+      const now2=new Date();
+      let projBal=getTotalSaldo();
+      for(let mi=now2.getMonth();;mi++){
+        const kk=`${now2.getFullYear()}-${String(mi+1).padStart(2,'0')}`;
+        projBal+=getRemainingIncomeForMonth(kk)-getRemainingOutForMonth(kk);
+        if(kk===mk) break;
+        if(mi>now2.getMonth()+24) break; // safety cap
+      }
+      finalBalEl.textContent=`Saldo fim do mês: ${fmt(projBal)}`;
+      finalBalEl.style.color=projBal>=0?'var(--primary)':'var(--danger)';
       finalBalEl.style.display='';
     } else {
-      finalBalEl.style.display='none'; // past months: no projection needed
+      finalBalEl.style.display='none';
     }
   }
 
