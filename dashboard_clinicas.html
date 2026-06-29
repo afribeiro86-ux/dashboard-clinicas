@@ -2546,17 +2546,59 @@ function addSegReceipt(declDate){
   const date=document.getElementById('segrc-date-'+suffix).value;
   const amount=parseFloat(document.getElementById('segrc-amt-'+suffix).value)||0;
   if(!date||!amount){alert('Preenche a data e o valor.');return;}
+
+  function applyReceipt(dDate, amt){
+    const e=getSegEntry(dDate)||{planned:null,declared:null,receipts:[]};
+    e.receipts.push({id:uid(),date,amount:amt});
+    S.seguros.calendar[dDate]=e;
+    S.entries.push({id:uid(),date,type:'entrada',amount:amt,
+      clinic:'castor',bank:'Rabobank',category:'Seguro Direto',notes:'Seguro '+dDate,segurosReceiptDate:dDate});
+    S.balances['castor_rabo']=(S.balances['castor_rabo']||0)+amt;
+  }
+
   const entry=getSegEntry(declDate)||{planned:null,declared:null,receipts:[]};
-  entry.receipts.push({id:uid(),date,amount});
-  S.seguros.calendar[declDate]=entry;
-  save();
-  renderSegurosPanel();
-  // Also add to saldos history
-  S.entries.push({id:uid(),date,type:'entrada',amount,
-    clinic:'castor',bank:'Rabobank',category:'Seguro Direto',notes:'Seguro '+declDate,segurosReceiptDate:declDate});
-  S.balances['castor_rabo']=(S.balances['castor_rabo']||0)+amount;
-  save();
-  renderSaldos();updateKpis();renderEntryTable('entrada');projBuilt=false;
+  const declared=entry.declared||0;
+  const totalRec=(entry.receipts||[]).reduce((s,r)=>s+r.amount,0);
+  const remaining=Math.max(0,declared-totalRec);
+
+  if(declared>0 && amount>remaining+0.005){
+    // Cap this declaration at what's remaining, carry overflow to next declaration
+    const overflow=parseFloat((amount-remaining).toFixed(2));
+    applyReceipt(declDate, parseFloat(remaining.toFixed(2)));
+
+    // Find next declaration (chronologically after declDate) that still has balance
+    const cal=S.seguros.calendar||{};
+    const nextDecl=Object.keys(cal)
+      .filter(d=>d>declDate)
+      .sort()
+      .find(d=>{
+        const e=getSegEntry(d);
+        if(!e||!e.declared) return false;
+        const rec=(e.receipts||[]).reduce((s,r)=>s+r.amount,0);
+        return e.declared>rec;
+      });
+
+    if(nextDecl){
+      applyReceipt(nextDecl, overflow);
+      save();
+      renderSegurosPanel();renderSaldos();updateKpis();renderEntryTable('entrada');projBuilt=false;
+      // Small toast to confirm split
+      const toast=document.createElement('div');
+      toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 4px 16px #0004';
+      toast.textContent=`✓ ${fmt(remaining)} para ${declDate} · ${fmt(overflow)} passaram para ${nextDecl}`;
+      document.body.appendChild(toast);
+      setTimeout(()=>toast.remove(),4000);
+    } else {
+      // No next declaration — just apply full amount as-is
+      applyReceipt(declDate, amount-remaining); // add the overflow too
+      save();
+      renderSegurosPanel();renderSaldos();updateKpis();renderEntryTable('entrada');projBuilt=false;
+    }
+  } else {
+    applyReceipt(declDate, amount);
+    save();
+    renderSegurosPanel();renderSaldos();updateKpis();renderEntryTable('entrada');projBuilt=false;
+  }
 }
 
 function deleteSegReceipt(declDate,receiptId){
