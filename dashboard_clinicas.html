@@ -1391,22 +1391,19 @@ function getRemainingIncomeForMonth(monthKey){
   });
   return total;
 }
-// Remaining (future) outgoings for a month — mirrors the Saídas calendar running balance logic:
-// only counts expenses whose due date >= today (past overdue items are assumed already in the bank balance)
+// All unpaid outgoings for a month — counts everything not yet marked as paid,
+// including overdue items (past due date but not paid yet stay "por pagar" in projections)
 function getRemainingOutForMonth(monthKey){
-  const todayStr=today();
   const [y,m]=monthKey.split('-').map(Number);
   const daysInMonth=new Date(y,m,0).getDate();
   let out=0;
   (S.recurringOut||[]).forEach(r=>{
     const entry=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
-    if(entry) return; // already paid — already in bank balance
-    const recDay=Math.min(r.day,daysInMonth);
-    const recDate=`${monthKey}-${String(recDay).padStart(2,'0')}`;
-    if(recDate>=todayStr) out+=getRecAmount(r.id,monthKey);
+    if(entry) return; // already paid — skip
+    out+=getRecAmount(r.id,monthKey); // unpaid: include regardless of due date
   });
   (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{
-    if(facCalDate(f)>=todayStr) out+=f.amount;
+    out+=f.amount; // unpaid factura: include regardless of due date
   });
   return out;
 }
@@ -4382,11 +4379,10 @@ function getHoldPlannedIn(mk){
   return (S.holdingIncome.calendar[mk]||[]).reduce((s,e)=>s+(e.received!=null?e.received:e.planned),0);
 }
 function getHoldFixedOut(mk){
-  // Full planned (for future months); actual paid for past
-  const paid=holdOutPaidForMonth(mk);
-  if(paid>0) return paid;
+  // For past months: return what was actually paid
+  // For current/future: return full planned total (all unpaid items count as still due)
   const cm=curMonth();
-  if(mk<cm) return 0; // past — nothing paid, nothing to show
+  if(mk<cm) return holdOutPaidForMonth(mk);
   return (S.holdingFixedOut||[]).reduce((s,r)=>s+r.amount,0);
 }
 function renderHoldProjections(){
