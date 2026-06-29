@@ -3444,19 +3444,21 @@ function renderOutCalendar(){
     });
   }
 
-  // Build running balance map: for today + future days with payments, show balance after payments
-  // Includes expected income arriving on or before each day.
+  // Build running balance map.
+  // Starts from current bank balance (getTotalSaldo), which already reflects all paid items.
+  // Past days: only subtract unpaid items (income already in saldo; don't add again).
+  // Today/future: add expected income AND subtract unpaid outgoings.
   const runBalMap={};
   {
     let runBal=getTotalSaldo();
     for(let day=1;day<=daysInMonth;day++){
       const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      if(dateStr<todayStr) continue; // past already in saldo
+      const isPast=dateStr<todayStr;
       const items=dayMap[day]||[];
       const facs=facMap[day]||[];
-      // Add expected income arriving today
-      runBal+=(incomeDayMap[day]||0);
-      // Subtract unpaid outgoings
+      // Only add income for today/future (past income already in saldo)
+      if(!isPast) runBal+=(incomeDayMap[day]||0);
+      // Subtract ALL unpaid outgoings — overdue items still reduce the projected balance
       const unpaidRec=items.filter(it=>!it.paid).reduce((s,it)=>s+it.amount,0);
       const unpaidFac=facs.reduce((s,f)=>s+f.amount,0);
       const dayOut=unpaidRec+unpaidFac;
