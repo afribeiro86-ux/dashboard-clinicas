@@ -3445,12 +3445,24 @@ function renderOutCalendar(){
   }
 
   // Build running balance map.
-  // Starts from current bank balance (getTotalSaldo), which already reflects all paid items.
+  // For the current month: start from current bank balance.
+  // For future months: carry forward projected net flows from current month onwards,
+  //   so July's starting balance = end-of-June balance, August = end-of-July, etc.
   // Past days: only subtract unpaid items (income already in saldo; don't add again).
   // Today/future: add expected income AND subtract unpaid outgoings.
   const runBalMap={};
   {
     let runBal=getTotalSaldo();
+    const cm=curMonth();
+    if(mk>cm){
+      let d2=new Date();d2.setDate(1);
+      const target=new Date(y,m-1,1);
+      while(d2<target){
+        const k2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+        runBal+=getRemainingIncomeForMonth(k2)-getRemainingOutForMonth(k2);
+        d2.setMonth(d2.getMonth()+1);
+      }
+    }
     for(let day=1;day<=daysInMonth;day++){
       const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const isPast=dateStr<todayStr;
