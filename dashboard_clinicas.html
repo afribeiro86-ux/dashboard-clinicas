@@ -1775,7 +1775,10 @@ function renderZZPPanel(){
     const prev=new Date(mk+'-01');prev.setMonth(prev.getMonth()-1);
     const pmk=prev.toISOString().slice(0,7);
     const prevRows=getZZPData(pmk);
-    if(prevRows.length) rows=prevRows.map(r=>({id:uid(),name:r.name,daysLeft:0,currentValue:0,expectedValue:0,percentage:r.percentage||0}));
+    if(prevRows.length){
+      rows=prevRows.map(r=>({id:uid(),name:r.name,daysLeft:0,currentValue:0,expectedValue:0,percentage:r.percentage||0}));
+      saveZZPData(mk,rows); // persist so updateZZPRow can find them
+    }
   }
 
   let grandTotal=0;
@@ -1872,7 +1875,10 @@ function renderMedPanel(){
     const prev=new Date(mk+'-01');prev.setMonth(prev.getMonth()-1);
     const pmk=prev.toISOString().slice(0,7);
     const prevRows=getMedData(pmk);
-    if(prevRows.length) rows=prevRows.map(r=>({id:uid(),name:r.name,daysLeft:0,currentValue:0,expectedValue:0,percentage:r.percentage||0}));
+    if(prevRows.length){
+      rows=prevRows.map(r=>({id:uid(),name:r.name,daysLeft:0,currentValue:0,expectedValue:0,percentage:r.percentage||0}));
+      saveMedData(mk,rows); // persist so updateMedRow can find them
+    }
   }
   let grandTotal=0;
   rows.forEach(r=>{grandTotal+=(r.expectedValue||0)*(r.percentage||0)/100;});
