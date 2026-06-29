@@ -2217,10 +2217,13 @@ function renderExpectedPayments(){
         const actionBtn=grpReceived
           ?`<button class="btn btn-ghost btn-sm" onclick="annulInfomedicsGroup('${g.cId}','${encDates}')" style="font-size:11px;padding:3px 8px">anular</button>`
           :`<button class="btn ${isPast||isToday?'btn-success':'btn-ghost'} btn-sm" onclick="receiveInfomedicsGroup('${g.cId}','${encDates}','${arrDate}')" style="font-size:11px;padding:3px 9px">+ Receber</button>`;
+        const perChair=grpChairs>0?grpAmount/grpChairs:0;
+        const perChairBadge=grpChairs>0&&!grpReceived?`<span style="font-size:10px;background:var(--primary-lt);color:var(--primary);border-radius:5px;padding:1px 5px;white-space:nowrap">${fmt(perChair)}/cad.</span>`:'';
         return `<div style="display:flex;align-items:center;gap:7px;padding:5px 9px;background:var(--bg);border-radius:7px;margin-bottom:3px;font-size:12px">
           <span class="cdot" style="background:${CLINIC_COLORS[g.cId]}"></span>
           <span style="font-weight:600">${CLINIC_NAMES[g.cId]}</span>
           <span style="color:var(--text-sm)">decl. ${declLabel} · 🦷 ${grpChairs}</span>
+          ${perChairBadge}
           <span style="margin-left:auto;display:flex;align-items:center;gap:7px">${amtDisplay}${actionBtn}</span>
         </div>`;
       }).join('')}
