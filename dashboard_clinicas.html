@@ -1964,8 +1964,12 @@ function renderZZPPanel(){
     }
   }
 
-  let grandTotal=0;
-  rows.forEach(r=>{grandTotal+=(r.expectedValue||0)*(r.percentage||0)/100;});
+  let grandTotal=0, paidTotal=0, unpaidTotal=0;
+  rows.forEach(r=>{
+    const v=(r.expectedValue||0)*(r.percentage||0)/100;
+    grandTotal+=v;
+    if(r.paid) paidTotal+=v; else unpaidTotal+=v;
+  });
 
   const el=document.getElementById('zzp-panel');
   if(!el) return;
@@ -1981,42 +1985,55 @@ function renderZZPPanel(){
           <th style="text-align:right;min-width:110px">Val. esperado</th>
           <th style="text-align:right;min-width:70px">%</th>
           <th style="text-align:right;min-width:110px;color:var(--danger)">A pagar</th>
-          <th></th>
+          <th style="min-width:90px"></th>
         </tr></thead>
         <tbody>
           ${rows.map((r,i)=>{
             const toPay=(r.expectedValue||0)*(r.percentage||0)/100;
-            return `<tr id="zzp-row-${i}">
+            const paid=!!r.paid;
+            const rowBg=paid?'background:#f0fdf4;':'';
+            const amtStyle=paid?'text-decoration:line-through;color:var(--success);':'color:var(--danger);';
+            return `<tr id="zzp-row-${i}" style="${rowBg}">
               <td><input value="${r.name}" onchange="updateZZPRow('${mk}',${i},'name',this.value)"
-                style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px"></td>
+                style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px${paid?';opacity:.6':''}"></td>
               <td style="text-align:right">
                 <input type="number" value="${r.daysLeft||''}" placeholder="0" min="0"
                   onchange="updateZZPRow('${mk}',${i},'daysLeft',this.value)"
-                  style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.currentValue||''}" placeholder="0" min="0" step="0.01"
                   onchange="updateZZPRow('${mk}',${i},'currentValue',this.value)"
-                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.expectedValue||''}" placeholder="0" min="0" step="0.01"
                   onchange="updateZZPRow('${mk}',${i},'expectedValue',this.value)"
-                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.percentage||''}" placeholder="0" min="0" max="100" step="0.1"
                   onchange="updateZZPRow('${mk}',${i},'percentage',this.value)"
-                  style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
-              <td id="zzp-pay-${i}" style="text-align:right;font-weight:700;color:var(--danger);font-size:15px">${fmt(toPay)}</td>
-              <td><button onclick="deleteZZPRow('${mk}',${i})"
-                style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button></td>
+              <td id="zzp-pay-${i}" style="text-align:right;font-weight:700;font-size:15px;${amtStyle}">${fmt(toPay)}</td>
+              <td style="text-align:right;white-space:nowrap">
+                <button onclick="toggleZZPPaid('${mk}',${i})"
+                  style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;cursor:pointer;border:1px solid ${paid?'#16a34a':'var(--border)'};background:${paid?'#dcfce7':'var(--card)'};color:${paid?'#16a34a':'var(--text-sm)'};margin-right:2px"
+                  title="${paid?'Repor como não pago':'Marcar como pago'}">${paid?'✓ Pago':'Pagar'}</button>
+                <button onclick="deleteZZPRow('${mk}',${i})"
+                  style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button>
+              </td>
             </tr>`;
           }).join('')}
+          ${paidTotal>0?`<tr style="background:#f0fdf4">
+            <td colspan="5" style="font-size:12px;color:#16a34a;font-weight:600;padding:6px 4px">✓ Total pago</td>
+            <td style="text-align:right;font-weight:700;font-size:14px;color:#16a34a">${fmt(paidTotal)}</td>
+            <td></td>
+          </tr>`:''}
           <tr style="border-top:2px solid var(--border);background:var(--bg)">
-            <td colspan="5" style="font-weight:700;font-size:13px;color:var(--text-sm)">Total a pagar</td>
-            <td id="zzp-grand-total" style="text-align:right;font-weight:800;font-size:16px;color:var(--danger)">${fmt(grandTotal)}</td>
+            <td colspan="5" style="font-weight:700;font-size:13px;color:var(--text-sm)">Por pagar</td>
+            <td id="zzp-grand-total" style="text-align:right;font-weight:800;font-size:16px;color:var(--danger)">${fmt(unpaidTotal)}</td>
             <td></td>
           </tr>
         </tbody>
@@ -2036,14 +2053,14 @@ function updateZZPRow(mk,i,field,val){
   if(!rows[i]) return;
   rows[i][field]=field==='name'?val:parseFloat(val)||0;
   saveZZPData(mk,rows);
-  // Update the "A pagar" cell for this row
-  const toPay=(rows[i].expectedValue||0)*(rows[i].percentage||0)/100;
-  const payCell=document.getElementById('zzp-pay-'+i);
-  if(payCell) payCell.textContent=fmt(toPay);
-  // Update grand total
-  const grandTotal=rows.reduce((s,r)=>s+(r.expectedValue||0)*(r.percentage||0)/100,0);
-  const gtEl=document.getElementById('zzp-grand-total');
-  if(gtEl) gtEl.textContent=fmt(grandTotal);
+  renderZZPPanel();
+}
+function toggleZZPPaid(mk,i){
+  const rows=getZZPData(mk);
+  if(!rows[i]) return;
+  rows[i].paid=!rows[i].paid;
+  saveZZPData(mk,rows);
+  renderZZPPanel();
 }
 
 // ─── MEDEWERKERS ───
@@ -2063,8 +2080,12 @@ function renderMedPanel(){
       saveMedData(mk,rows); // persist so updateMedRow can find them
     }
   }
-  let grandTotal=0;
-  rows.forEach(r=>{grandTotal+=(r.expectedValue||0)*(r.percentage||0)/100;});
+  let grandTotal=0, paidTotalM=0, unpaidTotalM=0;
+  rows.forEach(r=>{
+    const v=(r.expectedValue||0)*(r.percentage||0)/100;
+    grandTotal+=v;
+    if(r.paid) paidTotalM+=v; else unpaidTotalM+=v;
+  });
   const el=document.getElementById('med-panel');
   if(!el) return;
   el.innerHTML=`
@@ -2079,42 +2100,55 @@ function renderMedPanel(){
           <th style="text-align:right;min-width:110px">Val. esperado</th>
           <th style="text-align:right;min-width:70px">%</th>
           <th style="text-align:right;min-width:110px;color:var(--danger)">A pagar</th>
-          <th></th>
+          <th style="min-width:90px"></th>
         </tr></thead>
         <tbody>
           ${rows.map((r,i)=>{
             const toPay=(r.expectedValue||0)*(r.percentage||0)/100;
-            return `<tr id="med-row-${i}">
+            const paid=!!r.paid;
+            const rowBg=paid?'background:#f0fdf4;':'';
+            const amtStyle=paid?'text-decoration:line-through;color:var(--success);':'color:var(--danger);';
+            return `<tr id="med-row-${i}" style="${rowBg}">
               <td><input value="${r.name}" onchange="updateMedRow('${mk}',${i},'name',this.value)"
-                style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px"></td>
+                style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px${paid?';opacity:.6':''}"></td>
               <td style="text-align:right">
                 <input type="number" value="${r.daysLeft||''}" placeholder="0" min="0"
                   onchange="updateMedRow('${mk}',${i},'daysLeft',this.value)"
-                  style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.currentValue||''}" placeholder="0" min="0" step="0.01"
                   onchange="updateMedRow('${mk}',${i},'currentValue',this.value)"
-                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.expectedValue||''}" placeholder="0" min="0" step="0.01"
                   onchange="updateMedRow('${mk}',${i},'expectedValue',this.value)"
-                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.percentage||''}" placeholder="0" min="0" max="100" step="0.1"
                   onchange="updateMedRow('${mk}',${i},'percentage',this.value)"
-                  style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right">
+                  style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
-              <td id="med-pay-${i}" style="text-align:right;font-weight:700;color:var(--danger);font-size:15px">${fmt(toPay)}</td>
-              <td><button onclick="deleteMedRow('${mk}',${i})"
-                style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button></td>
+              <td id="med-pay-${i}" style="text-align:right;font-weight:700;font-size:15px;${amtStyle}">${fmt(toPay)}</td>
+              <td style="text-align:right;white-space:nowrap">
+                <button onclick="toggleMedPaid('${mk}',${i})"
+                  style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;cursor:pointer;border:1px solid ${paid?'#16a34a':'var(--border)'};background:${paid?'#dcfce7':'var(--card)'};color:${paid?'#16a34a':'var(--text-sm)'};margin-right:2px"
+                  title="${paid?'Repor como não pago':'Marcar como pago'}">${paid?'✓ Pago':'Pagar'}</button>
+                <button onclick="deleteMedRow('${mk}',${i})"
+                  style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button>
+              </td>
             </tr>`;
           }).join('')}
+          ${paidTotalM>0?`<tr style="background:#f0fdf4">
+            <td colspan="5" style="font-size:12px;color:#16a34a;font-weight:600;padding:6px 4px">✓ Total pago</td>
+            <td style="text-align:right;font-weight:700;font-size:14px;color:#16a34a">${fmt(paidTotalM)}</td>
+            <td></td>
+          </tr>`:''}
           <tr style="border-top:2px solid var(--border);background:var(--bg)">
-            <td colspan="5" style="font-weight:700;font-size:13px;color:var(--text-sm)">Total a pagar</td>
-            <td id="med-grand-total" style="text-align:right;font-weight:800;font-size:16px;color:var(--danger)">${fmt(grandTotal)}</td>
+            <td colspan="5" style="font-weight:700;font-size:13px;color:var(--text-sm)">Por pagar</td>
+            <td id="med-grand-total" style="text-align:right;font-weight:800;font-size:16px;color:var(--danger)">${fmt(unpaidTotalM)}</td>
             <td></td>
           </tr>
         </tbody>
@@ -2134,12 +2168,14 @@ function updateMedRow(mk,i,field,val){
   if(!rows[i]) return;
   rows[i][field]=field==='name'?val:parseFloat(val)||0;
   saveMedData(mk,rows);
-  const toPay=(rows[i].expectedValue||0)*(rows[i].percentage||0)/100;
-  const payCell=document.getElementById('med-pay-'+i);
-  if(payCell) payCell.textContent=fmt(toPay);
-  const grandTotal=rows.reduce((s,r)=>s+(r.expectedValue||0)*(r.percentage||0)/100,0);
-  const gtEl=document.getElementById('med-grand-total');
-  if(gtEl) gtEl.textContent=fmt(grandTotal);
+  renderMedPanel();
+}
+function toggleMedPaid(mk,i){
+  const rows=getMedData(mk);
+  if(!rows[i]) return;
+  rows[i].paid=!rows[i].paid;
+  saveMedData(mk,rows);
+  renderMedPanel();
 }
 
 // ═══════════════════════════════
