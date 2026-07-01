@@ -2025,22 +2025,22 @@ function renderZZPPanel(){
                 style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px${paid?';opacity:.6':''}"></td>
               <td style="text-align:right">
                 <input type="number" value="${r.daysLeft||''}" placeholder="0" min="0"
-                  onchange="updateZZPRow('${mk}',${i},'daysLeft',this.value)"
+                  oninput="updateZZPRow('${mk}',${i},'daysLeft',this.value)"
                   style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.currentValue||''}" placeholder="0" min="0" step="0.01"
-                  onchange="updateZZPRow('${mk}',${i},'currentValue',this.value)"
+                  oninput="updateZZPRow('${mk}',${i},'currentValue',this.value)"
                   style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.expectedValue||''}" placeholder="0" min="0" step="0.01"
-                  onchange="updateZZPRow('${mk}',${i},'expectedValue',this.value)"
+                  oninput="updateZZPRow('${mk}',${i},'expectedValue',this.value)"
                   style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.percentage||''}" placeholder="0" min="0" max="100" step="0.1"
-                  onchange="updateZZPRow('${mk}',${i},'percentage',this.value)"
+                  oninput="updateZZPRow('${mk}',${i},'percentage',this.value)"
                   style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td id="zzp-pay-${i}" style="text-align:right;font-weight:700;font-size:15px;${amtStyle}">${fmt(toPay)}</td>
@@ -2147,22 +2147,22 @@ function renderMedPanel(){
                 style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px${paid?';opacity:.6':''}"></td>
               <td style="text-align:right">
                 <input type="number" value="${r.daysLeft||''}" placeholder="0" min="0"
-                  onchange="updateMedRow('${mk}',${i},'daysLeft',this.value)"
+                  oninput="updateMedRow('${mk}',${i},'daysLeft',this.value)"
                   style="width:65px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.currentValue||''}" placeholder="0" min="0" step="0.01"
-                  onchange="updateMedRow('${mk}',${i},'currentValue',this.value)"
+                  oninput="updateMedRow('${mk}',${i},'currentValue',this.value)"
                   style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.expectedValue||''}" placeholder="0" min="0" step="0.01"
-                  onchange="updateMedRow('${mk}',${i},'expectedValue',this.value)"
+                  oninput="updateMedRow('${mk}',${i},'expectedValue',this.value)"
                   style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td style="text-align:right">
                 <input type="number" value="${r.percentage||''}" placeholder="0" min="0" max="100" step="0.1"
-                  onchange="updateMedRow('${mk}',${i},'percentage',this.value)"
+                  oninput="updateMedRow('${mk}',${i},'percentage',this.value)"
                   style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;text-align:right${paid?';opacity:.6':''}">
               </td>
               <td id="med-pay-${i}" style="text-align:right;font-weight:700;font-size:15px;${amtStyle}">${fmt(toPay)}</td>
