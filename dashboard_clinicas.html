@@ -1618,9 +1618,9 @@ function getPlannedIncome(monthKey){
 function getRemainingIncomeForMonth(monthKey){
   const todayStr=today();
   let total=getInfomedicsIncomeForMonth(monthKey)+getSegIncomeForMonth(monthKey);
-  // Outros: future entries with remaining balance
+  // Outros: all entries in the month with remaining balance (including past-of-today not yet received)
   const outCal=(S.outros&&S.outros.calendar)||{};
-  Object.keys(outCal).filter(d=>d.startsWith(monthKey)&&d>=todayStr).forEach(d=>{
+  Object.keys(outCal).filter(d=>d.startsWith(monthKey)).forEach(d=>{
     (outCal[d]||[]).forEach(e=>{ total+=Math.max(0,e.planned-(e.received||0)); });
   });
   return total;
@@ -1644,7 +1644,6 @@ function getPlannedOut(){
 }
 // Sum only the recurring expenses NOT yet paid in a given month
 function getInfomedicsIncomeForMonth(monthKey){
-  const todayStr=today();
   let total=0;
   INFOMEDICS_CLINICS.forEach(cId=>{
     const cal=S.infomedicsCalendar[cId]||{};
@@ -1656,7 +1655,7 @@ function getInfomedicsIncomeForMonth(monthKey){
       byArrival[arr].push(declDate);
     });
     Object.entries(byArrival).forEach(([arrDate,declDates])=>{
-      if(arrDate<todayStr) return;
+      // Include past arrivals not yet received (money expected but not yet registered)
       const anyReceived=declDates.some(dd=>getReceivedEntry(cId,dd));
       if(!anyReceived) total+=declDates.reduce((s,dd)=>s+getEntryAmount(cId,dd),0);
     });
@@ -1664,15 +1663,15 @@ function getInfomedicsIncomeForMonth(monthKey){
   return total;
 }
 function getSegIncomeForMonth(monthKey){
-  const todayStr=today();
   let total=0;
   const segCal=(S.seguros&&S.seguros.calendar)||{};
   Object.keys(segCal).forEach(segDate=>{
     const arrDate=segurosArrival(segDate);
     if(arrDate.slice(0,7)!==monthKey) return;
-    if(arrDate<todayStr) return;
+    // Include past arrivals still not fully received
     const e=getSegEntry(segDate); if(!e) return;
-    total+=Math.max(0,(e.declared||e.planned||0)-segTotalReceived(segDate));
+    const remaining=Math.max(0,(e.declared!=null?e.declared:(e.planned||0))-segTotalReceived(segDate));
+    total+=remaining;
   });
   return total;
 }
@@ -5010,7 +5009,7 @@ function exportMonthlyReport(){
   const infoAmt=INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthAmount(c,mk),0);
   const infoChairs=INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthChairs(c,mk),0);
   const segCal=(S.seguros&&S.seguros.calendar)||{};
-  const segAmt=Object.entries(segCal).filter(([d])=>mKey(d)===mk).reduce((s,[,e])=>{if(!e||!e.receipts)return s;return s+(e.receipts||[]).reduce((ss,r)=>ss+r,0);},0);
+  const segAmt=Object.entries(segCal).filter(([d])=>mKey(d)===mk).reduce((s,[,e])=>{if(!e||!e.receipts)return s;return s+(e.receipts||[]).reduce((ss,r)=>ss+(r.amount||0),0);},0);
   const outByCat={};
   cur.entries.filter(e=>e.type==='saida').forEach(e=>{outByCat[e.category]=(outByCat[e.category]||0)+e.amount;});
   const net=cur.in-cur.out;
