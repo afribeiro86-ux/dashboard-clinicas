@@ -334,6 +334,7 @@ tr:hover td{background:#f8fafc}
     </div>
     <div id="seg-arrivals-list"><p style="font-size:13px;color:var(--text-sm);font-style:italic">Nenhuma declaração registada.</p></div>
   </div>
+
   </div><!-- /entrada-sub-seguros -->
 
   <!-- ── Outros ── -->
@@ -833,6 +834,33 @@ tr:hover td{background:#f8fafc}
       <span style="font-size:13px;font-weight:600;color:var(--text-sm)">Total saídas</span>
       <span id="priv-total-exp" style="font-size:16px;font-weight:800;color:var(--danger)">€ 0</span>
     </div>
+  </div>
+
+  <!-- Recurring private payments checklist -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>✅ Pagamentos Recorrentes · Checklist Mensal</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="month-nav-btn" onclick="privRecNavMonth(-1)">‹</button>
+        <span id="priv-rec-month-label" style="font-size:13px;font-weight:700;min-width:110px;text-align:center">—</span>
+        <button class="month-nav-btn" onclick="privRecNavMonth(+1)">›</button>
+      </div>
+    </div>
+    <!-- Add item form -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:2;min-width:130px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Descrição</label>
+        <input type="text" id="priv-rec-name" placeholder="ex: renda, seguro, telecomunicações..."
+          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      </div>
+      <div style="flex:1;min-width:100px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Valor (€)</label>
+        <input type="number" id="priv-rec-amount" placeholder="0.00" step="0.01" min="0"
+          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addPrivRecItem()" style="padding:7px 14px;white-space:nowrap">＋ Adicionar</button>
+    </div>
+    <div id="priv-rec-list"></div>
   </div>
 
   <div class="card">
@@ -3580,8 +3608,83 @@ function switchPrivTab(name){
   document.querySelectorAll('[id^="priv-sub-"]').forEach(p=>p.classList.remove('active'));
   const panel=document.getElementById('priv-sub-'+name);
   if(panel) panel.classList.add('active');
-  if(name==='saldos') renderPrivado();
+  if(name==='saldos'){ renderPrivado(); renderPrivRecurring(); }
   else if(name==='dividendos'){ renderDividendos(); }
+}
+
+let privRecMonth=curMonth();
+
+function privRecNavMonth(delta){
+  const [y,m]=privRecMonth.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  privRecMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  renderPrivRecurring();
+}
+function addPrivRecItem(){
+  const name=document.getElementById('priv-rec-name').value.trim();
+  const amount=parseFloat(document.getElementById('priv-rec-amount').value)||0;
+  if(!name){alert('Indica a descrição.');return;}
+  if(!Array.isArray(P.recurringItems))P.recurringItems=[];
+  P.recurringItems.push({id:uid(),name,amount});
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));fbSavePrivado();
+  document.getElementById('priv-rec-name').value='';
+  document.getElementById('priv-rec-amount').value='';
+  renderPrivRecurring();
+}
+function deletePrivRecItem(id){
+  P.recurringItems=(P.recurringItems||[]).filter(r=>r.id!==id);
+  if(P.recurringPaid) Object.keys(P.recurringPaid).forEach(mk=>{
+    P.recurringPaid[mk]=(P.recurringPaid[mk]||[]).filter(pid=>pid!==id);
+  });
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));fbSavePrivado();
+  renderPrivRecurring();
+}
+function togglePrivRecPaid(mk,itemId){
+  if(!P.recurringPaid)P.recurringPaid={};
+  if(!P.recurringPaid[mk])P.recurringPaid[mk]=[];
+  const arr=P.recurringPaid[mk];
+  const idx=arr.indexOf(itemId);
+  if(idx>=0) arr.splice(idx,1); else arr.push(itemId);
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));fbSavePrivado();
+  renderPrivRecurring();
+}
+function renderPrivRecurring(){
+  const el=document.getElementById('priv-rec-list');
+  const lbl=document.getElementById('priv-rec-month-label');
+  if(!el) return;
+  if(lbl) lbl.textContent=mLabelFull(privRecMonth);
+  if(!Array.isArray(P.recurringItems))P.recurringItems=[];
+  if(!P.recurringPaid)P.recurringPaid={};
+  const items=P.recurringItems;
+  const paid=P.recurringPaid[privRecMonth]||[];
+  if(!items.length){
+    el.innerHTML=`<p style="font-size:13px;color:var(--text-sm);font-style:italic;padding:4px 0">Nenhum pagamento recorrente. Usa o formulário para adicionar.</p>`;
+    return;
+  }
+  const totalExp=items.reduce((s,i)=>s+i.amount,0);
+  const paidAmt=items.filter(i=>paid.includes(i.id)).reduce((s,i)=>s+i.amount,0);
+  const unpaidAmt=totalExp-paidAmt;
+  el.innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+      ${items.map(item=>{
+        const isPaid=paid.includes(item.id);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;border:1px solid ${isPaid?'#16a34a44':'var(--border)'};background:${isPaid?'#f0fdf4':'var(--card)'}">
+          <button onclick="togglePrivRecPaid('${privRecMonth}','${item.id}')"
+            style="width:22px;height:22px;border-radius:50%;border:2px solid ${isPaid?'#16a34a':'var(--border)'};background:${isPaid?'#16a34a':'transparent'};cursor:pointer;flex-shrink:0;font-size:13px;color:#fff;padding:0;display:flex;align-items:center;justify-content:center">
+            ${isPaid?'✓':''}
+          </button>
+          <span style="flex:1;font-size:14px;font-weight:600;${isPaid?'text-decoration:line-through;opacity:.6;color:#16a34a':''}">${item.name}</span>
+          <span style="font-size:14px;font-weight:700;color:${isPaid?'#16a34a':'var(--danger)'}">${item.amount?fmt(item.amount):'—'}</span>
+          <span style="font-size:11px;padding:2px 7px;border-radius:8px;background:${isPaid?'#dcfce7':'#fee2e2'};color:${isPaid?'#16a34a':'#dc2626'};font-weight:700;min-width:52px;text-align:center">${isPaid?'✓ Pago':'Por pagar'}</span>
+          <button onclick="deletePrivRecItem('${item.id}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-sm);padding:0 2px" title="Remover">×</button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;border-radius:10px;background:var(--bg);border:1px solid var(--border);font-size:13px">
+      <div>Total: <strong>${fmt(totalExp)}</strong></div>
+      <div style="color:var(--success)">✓ Pago: <strong>${fmt(paidAmt)}</strong> <span style="opacity:.6">(${paid.length}/${items.length})</span></div>
+      <div style="color:var(--danger);margin-left:auto">Por pagar: <strong style="font-size:15px">${fmt(unpaidAmt)}</strong></div>
+    </div>`;
 }
 
 function loadPrivado(){
@@ -3591,6 +3694,8 @@ function loadPrivado(){
   if(!Array.isArray(P.adhocExpenses))P.adhocExpenses=[];
   if(!Array.isArray(P.dividends))P.dividends=[];
   if(!Array.isArray(P.injections))P.injections=[];
+  if(!Array.isArray(P.recurringItems))P.recurringItems=[];
+  if(!P.recurringPaid)P.recurringPaid={};
 }
 function savePrivado(){
   // Read current input values on every save
