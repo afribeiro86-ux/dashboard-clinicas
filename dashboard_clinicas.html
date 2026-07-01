@@ -1284,7 +1284,7 @@ function setupPWA(){
 //  FIREBASE SYNC
 // ═══════════════════════════════
 const FB_CONFIG_KEY='clinica_firebase_config';
-let fbDb=null, fbEnabled=false, fbPushPending=false, fbListening=false;
+let fbDb=null, fbEnabled=false, fbPushPending=0, fbListening=false, fbSaveTimer=null;
 
 function fbStatus(status){
   const el=document.getElementById('sync-status');
@@ -1316,7 +1316,7 @@ function fbInit(){
       fbListening=true;
       // Main state listener
       fbDb.ref('clinica_v3').on('value',snap=>{
-        if(fbPushPending)return; // we just pushed, ignore echo
+        if(fbPushPending>0)return; // we just pushed, ignore echo
         const val=snap.val();
         if(val){
           // Use localStorage→load() so null-guards run
@@ -1329,7 +1329,7 @@ function fbInit(){
       },()=>fbStatus('offline'));
       // Privado listener
       fbDb.ref('clinica_privado').on('value',snap=>{
-        if(fbPushPending)return;
+        if(fbPushPending>0)return;
         const val=snap.val();
         if(val){
           localStorage.setItem(PRIV_KEY,JSON.stringify(val));
@@ -1344,12 +1344,19 @@ function fbInit(){
 
 function fbSave(){
   if(!fbEnabled||!fbDb)return;
-  fbPushPending=true;
-  fbStatus('saving');
-  fbDb.ref('clinica_v3').set(S)
-    .then(()=>fbStatus('synced'))
-    .catch(()=>fbStatus('offline'))
-    .finally(()=>{fbPushPending=false;});
+  // Debounce: collapse rapid saves into one write after 800ms idle.
+  // Keep fbPushPending=1 the entire time (timer pending + write in flight)
+  // so the Firebase echo-back listener never fires with stale data.
+  clearTimeout(fbSaveTimer);
+  fbPushPending=1;
+  fbSaveTimer=setTimeout(()=>{
+    fbStatus('saving');
+    const snap=JSON.parse(JSON.stringify(S)); // snapshot S at write time
+    fbDb.ref('clinica_v3').set(snap)
+      .then(()=>fbStatus('synced'))
+      .catch(()=>fbStatus('offline'))
+      .finally(()=>{fbPushPending=0;});
+  },800);
 }
 function fbSavePrivado(){
   if(!fbEnabled||!fbDb)return;
@@ -1977,10 +1984,10 @@ function updateMatRow(mk,i,field,val){
 function getZZPData(mk){ return (S.zzpPayments&&S.zzpPayments[mk])||[]; }
 function saveZZPData(mk,rows){ if(!S.zzpPayments)S.zzpPayments={}; S.zzpPayments[mk]=rows; save(); }
 
-function renderZZPPanel(){
+function renderZZPPanel(force){
   // Don't rebuild DOM while user is actively typing inside this panel
   const fa=document.activeElement;
-  if(fa&&fa.closest&&fa.closest('#zzp-panel'))return;
+  if(!force&&fa&&fa.closest&&fa.closest('#zzp-panel'))return;
   if(!S.zzpPayments)S.zzpPayments={};
   const mk=saidaDataMonth;
   let rows=getZZPData(mk);
@@ -2080,7 +2087,7 @@ function deleteZZPRow(mk,i){
 }
 function updateZZPRow(mk,i,field,val){
   const rows=getZZPData(mk);
-  if(!rows[i]) return;
+  if(!rows[i]){renderZZPPanel(true);return;} // S was wiped, force rebuild and re-init
   rows[i][field]=field==='name'?val:parseFloat(val)||0;
   saveZZPData(mk,rows);
   // In-place update: only refresh the calculated cells, don't rebuild the whole panel
@@ -2104,10 +2111,10 @@ function toggleZZPPaid(mk,i){
 function getMedData(mk){ return (S.medPayments&&S.medPayments[mk])||[]; }
 function saveMedData(mk,rows){ if(!S.medPayments)S.medPayments={}; S.medPayments[mk]=rows; save(); }
 
-function renderMedPanel(){
+function renderMedPanel(force){
   // Don't rebuild DOM while user is actively typing inside this panel
   const fa=document.activeElement;
-  if(fa&&fa.closest&&fa.closest('#med-panel'))return;
+  if(!force&&fa&&fa.closest&&fa.closest('#med-panel'))return;
   if(!S.medPayments)S.medPayments={};
   const mk=saidaDataMonth;
   let rows=getMedData(mk);
@@ -2205,7 +2212,7 @@ function deleteMedRow(mk,i){
 }
 function updateMedRow(mk,i,field,val){
   const rows=getMedData(mk);
-  if(!rows[i]) return;
+  if(!rows[i]){renderMedPanel(true);return;} // S was wiped, force rebuild and re-init
   rows[i][field]=field==='name'?val:parseFloat(val)||0;
   saveMedData(mk,rows);
   // In-place update: only refresh the calculated cells, don't rebuild the whole panel
