@@ -1985,9 +1985,9 @@ function getZZPData(mk){ return (S.zzpPayments&&S.zzpPayments[mk])||[]; }
 function saveZZPData(mk,rows){ if(!S.zzpPayments)S.zzpPayments={}; S.zzpPayments[mk]=rows; save(); }
 
 function renderZZPPanel(force){
-  // Don't rebuild DOM while user is actively typing inside this panel
+  // Don't rebuild DOM while user is actively typing an input inside this panel
   const fa=document.activeElement;
-  if(!force&&fa&&fa.closest&&fa.closest('#zzp-panel'))return;
+  if(!force&&fa&&fa.tagName==='INPUT'&&fa.closest&&fa.closest('#zzp-panel'))return;
   if(!S.zzpPayments)S.zzpPayments={};
   const mk=saidaDataMonth;
   let rows=getZZPData(mk);
@@ -2112,9 +2112,9 @@ function getMedData(mk){ return (S.medPayments&&S.medPayments[mk])||[]; }
 function saveMedData(mk,rows){ if(!S.medPayments)S.medPayments={}; S.medPayments[mk]=rows; save(); }
 
 function renderMedPanel(force){
-  // Don't rebuild DOM while user is actively typing inside this panel
+  // Don't rebuild DOM while user is actively typing an input inside this panel
   const fa=document.activeElement;
-  if(!force&&fa&&fa.closest&&fa.closest('#med-panel'))return;
+  if(!force&&fa&&fa.tagName==='INPUT'&&fa.closest&&fa.closest('#med-panel'))return;
   if(!S.medPayments)S.medPayments={};
   const mk=saidaDataMonth;
   let rows=getMedData(mk);
