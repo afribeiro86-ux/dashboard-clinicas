@@ -593,6 +593,7 @@ tr:hover td{background:#f8fafc}
         <th style="text-align:right">Entradas</th>
         <th style="text-align:right;font-size:11px;color:var(--text-sm)">Infomedics</th>
         <th style="text-align:right;font-size:11px;color:var(--text-sm)">Seguros</th>
+        <th style="text-align:right;font-size:11px;color:var(--text-sm)">Outros</th>
         <th style="text-align:right">Saídas</th>
         <th style="text-align:right">Resultado</th>
         <th style="text-align:right">Saldo Final</th>
@@ -2250,7 +2251,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     t.classList.add('active');
     currentTab=t.dataset.tab;
     document.getElementById('panel-'+currentTab).classList.add('active');
-    if(currentTab==='projections') buildProjections();
+    if(currentTab==='projections'){projBuilt=false;buildProjections();}
     if(currentTab==='saidas'){ switchSaidaTab(currentSaidaTab); }
     if(currentTab==='holding'){ renderHoldingPanel(); }
     if(currentTab==='privado'){ switchPrivTab(privTab); }
@@ -4895,11 +4896,11 @@ function buildProjections(){
       foReal.push(byMonth[k].out); foPlan.push(null);
       fn.push(byMonth[k].in-byMonth[k].out);
     } else if(isCur){
-      // Current month: show real so far + planned total (use whichever is higher/more info)
+      // Current month: show real so far AND planned (both visible so user can see Outros etc.)
       const realIn=byMonth[k]?byMonth[k].in:0;
       const realOut=byMonth[k]?byMonth[k].out:0;
-      fiReal.push(realIn||null); fiPlan.push(planInK>realIn?planInK:null);
-      foReal.push(realOut||null); foPlan.push(planOutK>realOut?planOutK:null);
+      fiReal.push(realIn||null); fiPlan.push(planInK||null);
+      foReal.push(realOut||null); foPlan.push(planOutK||null);
       fn.push(planInK-planOutK);
     } else {
       fiReal.push(null); fiPlan.push(planInK||null);
@@ -4964,8 +4965,7 @@ function buildProjections(){
   }
 
   const balRows=[`<tr style="background:var(--primary)11;border-bottom:2px solid var(--primary)33">
-    <td colspan="5" style="font-weight:700;color:var(--primary)">💰 Saldo no início de ${projYear===appStartYear?mLabel(curMon):projYear}</td>
-    <td></td>
+    <td colspan="7" style="font-weight:700;color:var(--primary)">💰 Saldo no início de ${projYear===appStartYear?mLabel(curMon):projYear}</td>
     <td style="text-align:right;font-weight:800;font-size:16px;color:var(--primary)">${fmt(runBal)}</td>
   </tr>`];
 
@@ -4977,6 +4977,8 @@ function buildProjections(){
     const isCur=k===curMon;
     const planInfoK=getInfomedicsIncomeForMonth(k);
     const planSegK=getSegIncomeForMonth(k);
+    const outCal2=(S.outros&&S.outros.calendar)||{};
+    const planOutrosK=Object.keys(outCal2).filter(d=>d.startsWith(k)).reduce((s,d)=>s+(outCal2[d]||[]).reduce((ss,e)=>ss+Math.max(0,e.planned-(e.received||0)),0),0);
     const realInSoFar=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===k&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
     const monthSummary=getMonthOutSummary(k);
     let inAmt,outAmt,isPlanned,inLabel,outLabel;
@@ -5005,8 +5007,9 @@ function buildProjections(){
     balRows.push(`<tr style="${bgStyle}">
       <td><span style="${labelStyle}">${mLabel(k)}</span>${planTag}</td>
       <td style="text-align:right;color:var(--success);font-weight:600">${fmt(inAmt)}${inLabel}</td>
-      <td style="text-align:right;color:var(--text-sm);font-size:12px">${planInfoK>0?fmt(planInfoK):'—'}</td>
-      <td style="text-align:right;color:var(--text-sm);font-size:12px">${planSegK>0?fmt(planSegK):'—'}</td>
+      <td style="text-align:right;color:var(--text-sm);font-size:12px">${isReal?'—':planInfoK>0?fmt(planInfoK):'—'}</td>
+      <td style="text-align:right;color:var(--text-sm);font-size:12px">${isReal?'—':planSegK>0?fmt(planSegK):'—'}</td>
+      <td style="text-align:right;color:var(--text-sm);font-size:12px;${planOutrosK>0&&!isReal?'color:#7c3aed;font-weight:600':''}">${isReal?'—':planOutrosK>0?fmt(planOutrosK):'—'}</td>
       <td style="text-align:right;color:var(--danger);font-weight:600">− ${fmt(outAmt)}${outLabel}</td>
       <td style="text-align:right;font-weight:700;color:${net>=0?'var(--success)':'var(--danger)'}">${fmtSigned(net)}</td>
       <td style="text-align:right;font-weight:800;font-size:15px;color:${runBal>=0?'var(--primary)':'var(--danger)'}">${fmt(runBal)}</td>
