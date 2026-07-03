@@ -2380,14 +2380,14 @@ function renderSaldos(){
   CLINIC_GROUPS.filter(grp=>grp.id!=='holding').forEach(grp=>{
     const gTot=grp.accounts.reduce((s,id)=>s+(S.balances[id]||0),0);
     const div=document.createElement('div');div.className='clinic-group';
-    div.innerHTML=`<div class="clinic-group-label"><span class="cdot" style="background:${grp.color}"></span>${grp.name}<span style="margin-left:auto;font-size:12px;font-weight:700;color:${grp.color}">${fmt(gTot)}</span></div>`;
+    div.innerHTML=`<div class="clinic-group-label"><span class="cdot" style="background:${grp.color}"></span>${grp.name}<span style="margin-left:auto;font-size:12px;font-weight:700;color:${gTot<0?'var(--danger)':grp.color}">${fmtSigned(gTot)}</span></div>`;
     const row=document.createElement('div');row.className='acc-row';
     grp.accounts.forEach(id=>{
       const acc=ACCOUNTS.find(a=>a.id===id);const bal=S.balances[id]||0;
       const card=document.createElement('div');card.className='acc-card';card.id='acc-'+id;
       card.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text-sm)">${acc.bank}</div>
         <div style="margin:4px 0"><span class="pill ${acc.pill}">${acc.bank}</span></div>
-        <div class="acc-bal" id="bd-${id}">${fmt(bal)}</div>
+        <div class="acc-bal" id="bd-${id}" style="${bal<0?'color:var(--danger)':''}">${fmtSigned(bal)}</div>
         <input class="acc-inp" id="bi-${id}" type="number" value="${bal}" step="0.01">
         <div class="acc-hint">Clica para editar</div>
         <button class="acc-save" id="bs-${id}" onclick="saveBal('${id}')">✓ Guardar</button>`;
@@ -2416,12 +2416,19 @@ function cancelEdit(id){
 }
 function saveBal(id){
   const v=parseFloat(document.getElementById('bi-'+id).value)||0;
-  S.balances[id]=v;save();document.getElementById('bd-'+id).textContent=fmt(v);cancelEdit(id);updateKpis();projBuilt=false;
+  S.balances[id]=v;save();
+  const bd=document.getElementById('bd-'+id);
+  bd.textContent=fmtSigned(v);
+  bd.style.color=v<0?'var(--danger)':'';
+  cancelEdit(id);updateKpis();projBuilt=false;
 }
 function updateKpis(){
   projBuilt=false; // invalidate cache on every data change
   // Main saldos KPIs — exclude holding
-  document.getElementById('kpi-total').textContent=fmt(getTotalSaldo());
+  const ts=getTotalSaldo();
+  const kpiTotEl=document.getElementById('kpi-total');
+  kpiTotEl.textContent=fmtSigned(ts);
+  kpiTotEl.style.color=ts<0?'var(--danger)':'';
   const cm=curMonth();
   const inE=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===cm&&e.clinic!=='holding');
   const outE=(S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===cm&&e.clinic!=='holding');
@@ -5251,7 +5258,9 @@ function renderHoldingPanel(){
   // KPIs
   const holdBal=S.balances['holding_ing']||0;
   const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  setEl('hold-kpi-total',fmt(holdBal));
+  const holdKpiEl=document.getElementById('hold-kpi-total');
+  if(holdKpiEl){holdKpiEl.textContent=fmtSigned(holdBal);holdKpiEl.style.color=holdBal<0?'var(--danger)':'';}
+
   const cm=curMonth();
   const inRecv=(S.holdingIncome.calendar[cm]||[]).reduce((s,e)=>s+(e.received!=null?e.received:0),0);
   const outPaid=holdOutPaidForMonth(cm);
@@ -5281,7 +5290,7 @@ function renderHoldSaldo(){
         const card=document.createElement('div');card.className='acc-card';card.id='acc-'+id;
         card.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text-sm)">${acc.bank}</div>
           <div style="margin:4px 0"><span class="pill ${acc.pill}">${acc.bank}</span></div>
-          <div class="acc-bal" id="bd-${id}">${fmt(bal)}</div>
+          <div class="acc-bal" id="bd-${id}" style="${bal<0?'color:var(--danger)':''}">${fmtSigned(bal)}</div>
           <input class="acc-inp" id="bi-${id}" type="number" value="${bal}" step="0.01">
           <div class="acc-hint">Clica para editar</div>
           <button class="acc-save" id="bs-${id}" onclick="saveBal('${id}')">✓ Guardar</button>`;
