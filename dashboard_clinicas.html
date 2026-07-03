@@ -1725,7 +1725,7 @@ function getMonthOutSummary(monthKey){
   (S.facturas||[]).filter(f=>mKey(facCalDate(f))===monthKey).forEach(f=>{
     if(f.paidEntryId) paidFacturas+=f.amount; else unpaidFacturas+=f.amount;
   });
-  const adHocTotal=(S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===monthKey&&!e.recurringOutId&&!e.facturaId).reduce((s,e)=>s+e.amount,0);
+  const adHocTotal=(S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===monthKey&&!e.recurringOutId&&!e.facturaId&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
   const paidTotal=paidRecurring+paidFacturas+adHocTotal;
   const unpaidTotal=unpaidRecurring+unpaidFacturas;
   const expectedTotal=paidTotal+unpaidTotal;
@@ -4298,9 +4298,9 @@ function renderOutCalendar(){
     dayMap[clampedDay].push({...r,amount:monthAmt,dateStr,paid:entry||null,hasOverride:monthAmt!==r.amount});
   });
 
-  // Ad-hoc entries (no recurringOutId, no facturaId)
+  // Ad-hoc entries (no recurringOutId, no facturaId, exclude holding)
   const adHocMap={};
-  S.entries.filter(e=>e.type==='saida'&&mKey(e.date)===mk&&!e.recurringOutId&&!e.facturaId).forEach(e=>{
+  S.entries.filter(e=>e.type==='saida'&&mKey(e.date)===mk&&!e.recurringOutId&&!e.facturaId&&e.clinic!=='holding').forEach(e=>{
     const d=+e.date.split('-')[2];
     if(!adHocMap[d]) adHocMap[d]=[];
     adHocMap[d].push(e);
@@ -4859,9 +4859,9 @@ let pChart=null,cChart=null;
 function buildProjections(){
   if(projBuilt)return;projBuilt=true;
 
-  // Build real data from entries
+  // Build real data from entries — exclude holding (tracked separately)
   const byMonth={};
-  (S.entries||[]).forEach(e=>{
+  (S.entries||[]).filter(e=>e.clinic!=='holding').forEach(e=>{
     const k=mKey(e.date);if(!byMonth[k])byMonth[k]={in:0,out:0};
     if(e.type==='entrada')byMonth[k].in+=e.amount;else byMonth[k].out+=e.amount;
   });
