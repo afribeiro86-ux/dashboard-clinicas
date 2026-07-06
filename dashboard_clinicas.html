@@ -2819,8 +2819,10 @@ const segCollapsed={}; // declDate → true/false (manual override); undefined =
 function toggleSegCollapsed(declDate){
   const entry=getSegEntry(declDate)||{};
   const declared=entry.declared||0;
+  const planned=entry.planned||0;
+  const ref=declared>0?declared:planned;
   const totalRec=(entry.receipts||[]).reduce((s,r)=>s+r.amount,0);
-  const isFullyReceived=declared>0&&totalRec>=declared;
+  const isFullyReceived=ref>0&&totalRec>=ref-0.01;
   // current state: manual override or auto default
   const current=segCollapsed[declDate]!==undefined ? segCollapsed[declDate] : isFullyReceived;
   segCollapsed[declDate]=!current;
@@ -2888,9 +2890,10 @@ function renderSegurosPanel(){
     const entry=getSegEntry(dateStr);
     const planned=entry&&entry.planned||0;
     const declared=entry&&entry.declared||0;
+    const ref=declared>0?declared:planned;
     const received=entry?segTotalReceived(dateStr):0;
-    const remaining=declared>0?Math.max(0,declared-received):0;
-    const isFullyReceived=declared>0&&received>=declared;
+    const remaining=ref>0?Math.max(0,ref-received):0;
+    const isFullyReceived=ref>0&&received>=ref-0.01;
     const isToday=dateStr===todayStr;
 
     totalPlanned+=planned;
@@ -2966,10 +2969,11 @@ function renderSegurosArrivals(){
   el.innerHTML=decls.map(({declDate,entry})=>{
     const planned=entry.planned||0;
     const declared=entry.declared||0;
+    const ref=declared>0?declared:planned;
     const receipts=entry.receipts||[];
     const totalRec=receipts.reduce((s,r)=>s+r.amount,0);
-    const remaining=declared>0?Math.max(0,declared-totalRec):0;
-    const isFullyReceived=declared>0&&totalRec>=declared;
+    const remaining=ref>0?Math.max(0,ref-totalRec):0;
+    const isFullyReceived=ref>0&&totalRec>=ref-0.01;
     const declD=new Date(declDate+'T12:00:00');
     const declLabel=`${WEEKDAYS_PT[declD.getDay()]} ${declD.getDate()} ${MONTHS_SHORT[declD.getMonth()]}`;
     const estArrDate=declared>0?segurosArrival(declDate):'';
