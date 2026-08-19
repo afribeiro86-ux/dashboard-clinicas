@@ -2601,25 +2601,37 @@ function infoNavMonth(delta){
   infoMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   renderInfomedicsPanel();
 }
+// Maps a source date to the equivalent weekday position in targetMonth.
+// e.g. "2026-07-07" (1st Monday of July) → "2026-08-04" (1st Monday of August)
+// Returns null if that Nth weekday doesn't exist in target month.
+function mapByDow(srcDateStr, targetMonth){
+  const src=new Date(srcDateStr+'T12:00:00');
+  const dow=src.getDay(); // 0=Sun…6=Sat
+  const occurrence=Math.ceil(src.getDate()/7); // 1st, 2nd, 3rd…
+  const [ty,tm]=targetMonth.split('-').map(Number);
+  const firstDow=new Date(ty,tm-1,1).getDay();
+  let firstOccDay=dow-firstDow+1; if(firstOccDay<=0) firstOccDay+=7;
+  const targetDay=firstOccDay+(occurrence-1)*7;
+  const daysInMonth=new Date(ty,tm,0).getDate();
+  if(targetDay>daysInMonth) return null;
+  return `${targetMonth}-${String(targetDay).padStart(2,'0')}`;
+}
+
 function copyInfomedicsFromPrevMonth(){
   const [y,m]=infoMonth.split('-').map(Number);
   const pd=new Date(y,m-2,1);
   const prevMonth=`${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,'0')}`;
   const hasData=INFOMEDICS_CLINICS.some(c=>getMonthChairs(c,infoMonth)>0);
   if(hasData&&!confirm(`${mLabelFull(infoMonth)} já tem cadeiras definidas.\nSubstituir com dados de ${mLabelFull(prevMonth)}?`)) return;
-  const daysInCur=new Date(y,m,0).getDate();
   INFOMEDICS_CLINICS.forEach(cId=>{
     if(!S.infomedicsCalendar[cId]) S.infomedicsCalendar[cId]={};
     const cal=S.infomedicsCalendar[cId];
-    // snapshot prev entries before modifying
     const prevEntries=Object.keys(cal).filter(d=>d.startsWith(prevMonth)).map(d=>({d,chairs:cal[d].chairs}));
-    // clear current month
     Object.keys(cal).filter(d=>d.startsWith(infoMonth)).forEach(d=>delete cal[d]);
-    // copy day-by-day (reset amount so auto-calc takes over)
     prevEntries.forEach(({d:pd2,chairs})=>{
-      const day=parseInt(pd2.split('-')[2]);
-      if(day>daysInCur||chairs<=0) return;
-      cal[`${infoMonth}-${String(day).padStart(2,'0')}`]={chairs,amount:null};
+      if(chairs<=0) return;
+      const target=mapByDow(pd2,infoMonth);
+      if(target) cal[target]={chairs,amount:null};
     });
   });
   save(); projBuilt=false; renderInfomedicsPanel();
@@ -2872,15 +2884,11 @@ function copySegurosFromPrevMonth(){
   if(!prevEntries.length){alert(`Sem declarações de seguros em ${mLabelFull(prevMonth)}.`);return;}
   const hasData=Object.keys(cal).some(d=>d.startsWith(segurosMonth));
   if(hasData&&!confirm(`${mLabelFull(segurosMonth)} já tem declarações.\nSubstituir com dados de ${mLabelFull(prevMonth)}?`)) return;
-  const daysInCur=new Date(y,m,0).getDate();
-  // snapshot
   const snap=prevEntries.map(d=>({d,planned:cal[d]&&cal[d].planned||0}));
-  // clear current month (only planned — keep any existing declared/receipts? no, full replace)
   Object.keys(cal).filter(d=>d.startsWith(segurosMonth)).forEach(d=>delete cal[d]);
   snap.forEach(({d:pd2,planned})=>{
-    const day=parseInt(pd2.split('-')[2]);
-    if(day>daysInCur) return;
-    cal[`${segurosMonth}-${String(day).padStart(2,'0')}`]={planned};
+    const target=mapByDow(pd2,segurosMonth);
+    if(target) cal[target]={planned};
   });
   save(); projBuilt=false; renderSegurosPanel(); renderSegurosArrivals();
 }
@@ -4098,16 +4106,11 @@ function copyOutrosFromPrevMonth(){
   if(!prevKeys.length){alert(`Sem entradas em Outros em ${mLabelFull(prevMonth)}.`);return;}
   const hasData=Object.keys(cal).some(d=>d.startsWith(outrosMonth));
   if(hasData&&!confirm(`${mLabelFull(outrosMonth)} já tem entradas em Outros.\nSubstituir com dados de ${mLabelFull(prevMonth)}?`)) return;
-  const daysInCur=new Date(y,m,0).getDate();
-  // snapshot prev entries
   const snap=prevKeys.map(d=>({d,entries:cal[d].map(e=>({sourceId:e.sourceId,planned:e.planned}))}));
-  // clear current month
   Object.keys(cal).filter(d=>d.startsWith(outrosMonth)).forEach(d=>delete cal[d]);
-  // copy, resetting received to null
   snap.forEach(({d:pd2,entries})=>{
-    const day=parseInt(pd2.split('-')[2]);
-    if(day>daysInCur) return;
-    cal[`${outrosMonth}-${String(day).padStart(2,'0')}`]=entries.map(e=>({sourceId:e.sourceId,planned:e.planned,received:null}));
+    const target=mapByDow(pd2,outrosMonth);
+    if(target) cal[target]=entries.map(e=>({sourceId:e.sourceId,planned:e.planned,received:null}));
   });
   save(); projBuilt=false; renderOutrosPanel();
 }
