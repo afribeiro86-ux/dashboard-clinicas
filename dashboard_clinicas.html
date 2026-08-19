@@ -5051,11 +5051,25 @@ function buildProjections(){
   }
 
   // Overdue: unpaid expenses from past months (6-month lookback)
+  // For recurring: only count if it has been paid at least once before (proves it existed then)
+  // For facturas: always count (they have explicit due dates)
   let overdueAmt=0;
   const overdueMonths=[];
   const sixMAgo=(()=>{const d=new Date(now.getFullYear(),now.getMonth()-6,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+  function getOverdueForMonth(monthKey){
+    let out=0;
+    (S.recurringOut||[]).forEach(r=>{
+      const everPaid=(S.entries||[]).some(e=>e.type==='saida'&&e.recurringOutId===r.id);
+      if(!everPaid) return; // new recurring never paid — not overdue for past months
+      const paid=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
+      if(paid) return;
+      out+=getRecAmount(r.id,monthKey);
+    });
+    (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{out+=f.amount;});
+    return out;
+  }
   Object.keys(byMonth).filter(k2=>k2<curMon&&k2>=sixMAgo).sort().forEach(k2=>{
-    const rem=getRemainingOutForMonth(k2);
+    const rem=getOverdueForMonth(k2);
     if(rem>0){overdueAmt+=rem;overdueMonths.push({k:k2,rem});}
   });
   // Also catch past-due facturas in months with no ad-hoc entries at all
