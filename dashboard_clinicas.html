@@ -1717,8 +1717,15 @@ function getSegIncomeForMonth(monthKey){
 
 // Single source of truth for monthly out summary — used by both Saídas calendar and Projections
 function getMonthOutSummary(monthKey){
+  const isPast=monthKey<curMonth();
   let paidRecurring=0, unpaidRecurring=0;
   (S.recurringOut||[]).forEach(r=>{
+    // For past months: ignore recurring expenses that have never been paid anywhere
+    // (they didn't exist in that period — e.g. newly added recurring)
+    if(isPast){
+      const everPaid=(S.entries||[]).some(e=>e.type==='saida'&&e.recurringOutId===r.id);
+      if(!everPaid) return;
+    }
     const entry=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
     const monthAmt=getRecAmount(r.id,monthKey);
     if(entry) paidRecurring+=entry.amount;
@@ -4110,7 +4117,7 @@ function copyOutrosFromPrevMonth(){
   Object.keys(cal).filter(d=>d.startsWith(outrosMonth)).forEach(d=>delete cal[d]);
   snap.forEach(({d:pd2,entries})=>{
     const target=mapByDow(pd2,outrosMonth);
-    if(target) cal[target]=entries.map(e=>({sourceId:e.sourceId,planned:e.planned,received:null}));
+    if(target) cal[target]=entries.map(e=>({id:uid(),sourceId:e.sourceId,planned:e.planned,received:null}));
   });
   save(); projBuilt=false; renderOutrosPanel();
 }
