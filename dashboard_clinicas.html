@@ -1452,6 +1452,7 @@ function clearFirebaseConfig(){
 //  CONFIG
 // ═══════════════════════════════
 const SK = 'clinica_v3';
+const APP_START = '2025-06'; // App in use from this month — ignore all history before it
 
 const CLINIC_GROUPS = [
   {id:'centrum', name:'Centrum',          color:'#0e7490', accounts:['centrum_ing','centrum_abn']},
@@ -1510,6 +1511,8 @@ function load(){
         S.settings.outCategories=['Salários','Huur / Renda','Leasing (DLL/BNP)','Belasting','Material Dentário','Seguro','Contabilidade','Outro'];
       if(!Array.isArray(S.entries))S.entries=[];
       if(!S.recurringOut)S.recurringOut=[];
+      // Migration: set startMonth on existing recurring that don't have one
+      S.recurringOut.forEach(r=>{if(!r.startMonth)r.startMonth=APP_START;});
       if(!S.recurringOverrides)S.recurringOverrides={};
       if(!S.facturas)S.facturas=[];
       if(!S.infomedicsCalendar)S.infomedicsCalendar={};
@@ -1666,9 +1669,13 @@ function getRemainingIncomeForMonth(monthKey){
 }
 // All unpaid outgoings for a month — counts everything not yet marked as paid,
 // including overdue items (past due date but not paid yet stay "por pagar" in projections)
+// True if a recurring was active in the given month (started by then)
+function recActiveInMonth(r,monthKey){ return monthKey>=(r.startMonth||APP_START); }
+
 function getRemainingOutForMonth(monthKey){
   let out=0;
   (S.recurringOut||[]).forEach(r=>{
+    if(!recActiveInMonth(r,monthKey)) return;
     const entry=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
     if(entry) return;
     out+=getRecAmount(r.id,monthKey);
@@ -1720,12 +1727,7 @@ function getMonthOutSummary(monthKey){
   const isPast=monthKey<curMonth();
   let paidRecurring=0, unpaidRecurring=0;
   (S.recurringOut||[]).forEach(r=>{
-    // For past months: ignore recurring expenses that have never been paid anywhere
-    // (they didn't exist in that period — e.g. newly added recurring)
-    if(isPast){
-      const everPaid=(S.entries||[]).some(e=>e.type==='saida'&&e.recurringOutId===r.id);
-      if(!everPaid) return;
-    }
+    if(!recActiveInMonth(r,monthKey)) return;
     const entry=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
     const monthAmt=getRecAmount(r.id,monthKey);
     if(entry) paidRecurring+=entry.amount;
@@ -3473,6 +3475,7 @@ function addRecurringOut(){
   const amount=parseFloat(document.getElementById('rec-amount').value)||0;
   if(!day||!name||!amount){alert('Preenche o dia, o nome e o valor.');return;}
   S.recurringOut.push({id:uid(),name,amount,day,
+    startMonth:curMonth(),
     category:document.getElementById('rec-cat').value,
     account:document.getElementById('rec-account').value,
     notes:document.getElementById('rec-notes').value.trim()});
@@ -4383,6 +4386,7 @@ function renderOutCalendar(){
   // Build day → recurring items
   const dayMap={};
   S.recurringOut.forEach(r=>{
+    if(!recActiveInMonth(r,mk)) return;
     const clampedDay=Math.min(r.day,daysInMonth);
     if(!dayMap[clampedDay]) dayMap[clampedDay]=[];
     const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(clampedDay).padStart(2,'0')}`;
@@ -5063,12 +5067,10 @@ function buildProjections(){
   // For facturas: always count (they have explicit due dates)
   let overdueAmt=0;
   const overdueMonths=[];
-  const sixMAgo=(()=>{const d=new Date(now.getFullYear(),now.getMonth()-6,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
   function getOverdueForMonth(monthKey){
     let out=0;
     (S.recurringOut||[]).forEach(r=>{
-      const everPaid=(S.entries||[]).some(e=>e.type==='saida'&&e.recurringOutId===r.id);
-      if(!everPaid) return; // new recurring never paid — not overdue for past months
+      if(!recActiveInMonth(r,monthKey)) return; // recurring didn't exist yet in this month
       const paid=(S.entries||[]).find(e=>e.type==='saida'&&e.recurringOutId===r.id&&mKey(e.date)===monthKey);
       if(paid) return;
       out+=getRecAmount(r.id,monthKey);
@@ -5076,7 +5078,7 @@ function buildProjections(){
     (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{out+=f.amount;});
     return out;
   }
-  Object.keys(byMonth).filter(k2=>k2<curMon&&k2>=sixMAgo).sort().forEach(k2=>{
+  Object.keys(byMonth).filter(k2=>k2<curMon&&k2>=APP_START).sort().forEach(k2=>{
     const rem=getOverdueForMonth(k2);
     if(rem>0){overdueAmt+=rem;overdueMonths.push({k:k2,rem});}
   });
@@ -5084,7 +5086,7 @@ function buildProjections(){
   (S.facturas||[]).filter(f=>{
     if(f.paidEntryId)return false;
     const k2=mKey(facCalDate(f));
-    return k2<curMon&&k2>=sixMAgo&&!byMonth[k2];
+    return k2<curMon&&k2>=APP_START&&!byMonth[k2];
   }).forEach(f=>{
     const k2=mKey(facCalDate(f));
     overdueAmt+=f.amount;
