@@ -4573,11 +4573,12 @@ function renderOutCalendar(){
     if(isFutureMon||isCurrentMon){
       const now2=new Date();
       let projBal=getTotalSaldo();
-      for(let mi=now2.getMonth();;mi++){
-        const kk=`${now2.getFullYear()}-${String(mi+1).padStart(2,'0')}`;
+      const loopD=new Date(now2.getFullYear(),now2.getMonth(),1);
+      for(let safety=0;safety<48;safety++){
+        const kk=`${loopD.getFullYear()}-${String(loopD.getMonth()+1).padStart(2,'0')}`;
         projBal+=getRemainingIncomeForMonth(kk)-getRemainingOutForMonth(kk);
         if(kk===mk) break;
-        if(mi>now2.getMonth()+24) break; // safety cap
+        loopD.setMonth(loopD.getMonth()+1);
       }
       finalBalEl.textContent=`Saldo fim do mês: ${fmt(projBal)}`;
       finalBalEl.style.color=projBal>=0?'var(--primary)':'var(--danger)';
