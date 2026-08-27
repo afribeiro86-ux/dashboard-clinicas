@@ -225,6 +225,7 @@ tr:hover td{background:#f8fafc}
   <div class="tab" data-tab="projections">Projeções</div>
   <div class="tab" data-tab="holding">Holding</div>
   <div class="tab" data-tab="privado">Privado</div>
+  <div class="tab" data-tab="tendencias">📈 Tendências</div>
 </div>
 
 <div id="alert-bar" style="display:none;padding:8px 24px;background:#fef2f2;border-bottom:1px solid #fecaca;gap:8px;flex-wrap:wrap;align-items:center"></div>
@@ -240,6 +241,20 @@ tr:hover td{background:#f8fafc}
     <div class="kpi orange"><div class="kpi-label">Resultado Este Mês</div><div class="kpi-val" id="kpi-net">€ 0</div><div class="kpi-sub">Entradas − Saídas</div></div>
     <div class="kpi" style="--kpi-color:#7c3aed"><div class="kpi-label" style="color:#7c3aed">Runway de Caixa</div><div class="kpi-val" id="kpi-runway" style="color:#7c3aed">— meses</div><div class="kpi-sub" id="kpi-runway-sub">Com base no cash flow previsto</div></div>
   </div>
+  <!-- Meta de receita mensal -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🎯 Meta de Receita · <span id="target-month-label">—</span></span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;color:var(--text-sm);font-weight:500">Meta mensal</label>
+        <input type="number" id="target-input" placeholder="Ex: 150000" min="0" step="1000"
+          style="width:140px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"
+          oninput="saveTarget()">
+      </div>
+    </div>
+    <div id="target-progress-content" style="margin-top:10px"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">Saldos Actuais <span class="card-title-note">Clica numa conta para editar</span></div>
     <div id="accGrid"></div>
@@ -288,6 +303,8 @@ tr:hover td{background:#f8fafc}
       <div class="info-total-item">= <strong id="info-total-val" style="color:var(--success);font-size:18px">€ 0</strong></div>
       <div class="info-total-item" style="margin-left:auto;border-left:1px solid #a5f3fc;padding-left:14px">Média: <strong id="info-avg-kpi" style="color:var(--primary)">—</strong></div>
     </div>
+    <!-- Chair utilization stats -->
+    <div id="info-chair-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text-sm)"></div>
 
     <!-- Expected payments timeline -->
     <div style="margin-top:16px">
@@ -564,6 +581,16 @@ tr:hover td{background:#f8fafc}
     <span id="scen-label" style="font-size:12px;color:var(--text-sm);margin-left:4px"></span>
     <button onclick="exportMonthlyReport()" style="margin-left:auto;background:var(--text-sm);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">📄 Relatório Mensal</button>
   </div>
+  <!-- "E se?" extra chairs slider -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;background:var(--primary-lt);border:1px solid #a5f3fc;border-radius:10px;padding:10px 16px">
+    <span style="font-size:13px;font-weight:600;color:var(--primary)">🪑 E se?</span>
+    <span style="font-size:12px;color:var(--text-sm)">Cadeiras extras/mês:</span>
+    <input type="range" id="extra-chairs-slider" min="0" max="60" value="0" step="1"
+      style="width:140px;accent-color:var(--primary)" oninput="updateExtraChairs(this.value)">
+    <strong id="extra-chairs-label" style="font-size:14px;color:var(--primary);min-width:20px">0</strong>
+    <span style="font-size:12px;color:var(--text-sm)">= <strong id="extra-chairs-val" style="color:var(--success)">+ € 0/mês</strong></span>
+    <span id="extra-chairs-year" style="font-size:12px;color:var(--text-sm);margin-left:8px"></span>
+  </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
     <div id="proj-note" style="background:var(--warn-lt);border:1px solid #fcd34d;border-radius:10px;padding:10px 15px;font-size:13px;color:#78350f;flex:1">
       📊 Projeções ficam mais precisas com mais meses de dados reais. Meses futuros usam os valores planeados nos calendários.
@@ -599,6 +626,7 @@ tr:hover td{background:#f8fafc}
         <th style="text-align:right;font-size:11px;color:var(--text-sm)">Outros</th>
         <th style="text-align:right">Saídas</th>
         <th style="text-align:right">Resultado</th>
+        <th style="text-align:right;font-size:11px;color:var(--text-sm)">vs Ano Ant.</th>
         <th style="text-align:right">Saldo Final</th>
       </tr></thead>
       <tbody id="proj-balance-table"></tbody>
@@ -1003,6 +1031,39 @@ tr:hover td{background:#f8fafc}
 
 </div><!-- /panel-privado -->
 
+<!-- ══════ TENDÊNCIAS ══════ -->
+<div class="panel" id="panel-tendencias">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi green"><div class="kpi-label">Receita Média 3M</div><div class="kpi-val green" id="trend-avg-in3">€ 0</div><div class="kpi-sub">últimos 3 meses reais</div></div>
+    <div class="kpi red"><div class="kpi-label">Despesa Média 3M</div><div class="kpi-val red" id="trend-avg-out3">€ 0</div><div class="kpi-sub">últimos 3 meses reais</div></div>
+    <div class="kpi blue"><div class="kpi-label">Margem Média 3M</div><div class="kpi-val" id="trend-margin3" style="color:var(--primary)">0%</div><div class="kpi-sub">resultado / receita</div></div>
+    <div class="kpi" style="--kpi-color:#f59e0b"><div class="kpi-label" style="color:#f59e0b">Crescimento YoY</div><div class="kpi-val" id="trend-yoy" style="color:#f59e0b">—</div><div class="kpi-sub">receita vs ano passado</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📊 Receitas vs Despesas · 12 Meses</div>
+    <div class="chart-wrap" style="height:260px"><canvas id="trendIncomeChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🦷 Cadeiras por Clínica · 12 Meses</div>
+    <div class="chart-wrap" style="height:240px"><canvas id="trendChairsChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📅 Comparação Mensal · Mês a Mês</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Mês</th>
+        <th style="text-align:right">Receita Real</th>
+        <th style="text-align:right">vs Mês Ant.</th>
+        <th style="text-align:right">vs Ano Ant.</th>
+        <th style="text-align:right">Despesa Real</th>
+        <th style="text-align:right">Resultado</th>
+        <th style="text-align:right">Margem</th>
+      </tr></thead>
+      <tbody id="trend-comparison-table"></tbody>
+    </table></div>
+  </div>
+</div>
+
 </div><!-- /content -->
 
 <!-- ══════ MODAL: SETTINGS ══════ -->
@@ -1056,6 +1117,20 @@ tr:hover td{background:#f8fafc}
           <input type="number" id="set-seg-delay" placeholder="14" min="1" max="60" step="1">
           <div class="helper">Padrão: 14 dias (~2 semanas)</div>
         </div>
+      </div>
+    </div>
+    <div class="modal-sep" style="height:1px;background:var(--border);margin:16px 0"></div>
+    <div class="settings-section">
+      <h4>🔔 Alertas</h4>
+      <div class="fg">
+        <label>Alerta de saldo mínimo (€)</label>
+        <input type="number" id="set-alert-threshold" placeholder="0" min="0" step="1000">
+        <div class="helper">Alerta quando o saldo total descer abaixo deste valor (0 = desativado)</div>
+      </div>
+      <div class="fg" style="margin-top:10px">
+        <label>Meta de receita mensal (€)</label>
+        <input type="number" id="set-monthly-target" placeholder="0" min="0" step="1000">
+        <div class="helper">Alerta quando o mês estiver a menos de 50% da meta após o dia 15</div>
       </div>
     </div>
     <div class="modal-sep" style="height:1px;background:var(--border);margin:16px 0"></div>
@@ -1432,6 +1507,8 @@ function parseFirebaseConfig(raw){
 function openSettings(){
   document.getElementById('set-chair-rate').value=chairRate();
   document.getElementById('set-seg-delay').value=S.settings.segurosDelay||14;
+  document.getElementById('set-alert-threshold').value=S.settings.alertThreshold||0;
+  document.getElementById('set-monthly-target').value=S.targets?.monthly||0;
   renderSettingsCategories();
   const saved=localStorage.getItem(FB_CONFIG_KEY)||'';
   document.getElementById('set-fb-config').value=saved;
@@ -1496,7 +1573,8 @@ let S = {
   holdingIncome: { sources: [], calendar: {} },
   techPayments: {}, materialPayments: {}, zzpPayments: {}, medPayments: {},
   outros: { sources: [], calendar: {} },
-  settings: { infomedicsPerChair: 1300, outCategories: ['Salários','Huur / Renda','Leasing (DLL/BNP)','Belasting','Material Dentário','Seguro','Contabilidade','Outro'] }
+  settings: { infomedicsPerChair: 1300, outCategories: ['Salários','Huur / Renda','Leasing (DLL/BNP)','Belasting','Material Dentário','Seguro','Contabilidade','Outro'], alertThreshold: 0 },
+  targets: { monthly: 0 }
 };
 
 function load(){
@@ -1513,6 +1591,9 @@ function load(){
       if(!S.recurringOut)S.recurringOut=[];
       // Migration: set startMonth on existing recurring that don't have one
       S.recurringOut.forEach(r=>{if(!r.startMonth)r.startMonth=APP_START;});
+      if(!S.targets) S.targets={monthly:0};
+      if(S.targets.monthly==null) S.targets.monthly=0;
+      if(!S.settings.alertThreshold) S.settings.alertThreshold=0;
       if(!S.recurringOverrides)S.recurringOverrides={};
       if(!S.facturas)S.facturas=[];
       if(!S.infomedicsCalendar)S.infomedicsCalendar={};
@@ -1683,6 +1764,13 @@ function getRemainingOutForMonth(monthKey){
   (S.facturas||[]).filter(f=>!f.paidEntryId&&mKey(facCalDate(f))===monthKey).forEach(f=>{
     out+=f.amount;
   });
+  // Ad-hoc entries count as "remaining" for current and future months
+  // (past months are already captured in byMonth.out from real entries)
+  if(monthKey>=curMonth()){
+    (S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===monthKey&&!e.recurringOutId&&!e.facturaId&&e.clinic!=='holding').forEach(e=>{
+      out+=e.amount;
+    });
+  }
   return out;
 }
 function getPlannedOut(){
@@ -1738,8 +1826,8 @@ function getMonthOutSummary(monthKey){
     if(f.paidEntryId) paidFacturas+=f.amount; else unpaidFacturas+=f.amount;
   });
   const adHocTotal=(S.entries||[]).filter(e=>e.type==='saida'&&mKey(e.date)===monthKey&&!e.recurringOutId&&!e.facturaId&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
-  const paidTotal=paidRecurring+paidFacturas+adHocTotal;
-  const unpaidTotal=unpaidRecurring+unpaidFacturas;
+  const paidTotal=paidRecurring+paidFacturas; // ad-hoc not "confirmed paid" — shows in por pagar
+  const unpaidTotal=unpaidRecurring+unpaidFacturas+adHocTotal; // ad-hoc shows as por pagar
   const expectedTotal=paidTotal+unpaidTotal;
   return {paidRecurring,unpaidRecurring,paidFacturas,unpaidFacturas,adHocTotal,paidTotal,unpaidTotal,expectedTotal};
 }
@@ -2268,6 +2356,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     if(currentTab==='holding'){ renderHoldingPanel(); }
     if(currentTab==='privado'){ switchPrivTab(privTab); }
     if(currentTab==='entradas'){ switchEntradaTab(currentEntradaTab); }
+    if(currentTab==='tendencias'){ renderTrends(); }
   });
 });
 
@@ -2282,6 +2371,11 @@ function saveSettings(){
   const newSegDelay=parseInt(document.getElementById('set-seg-delay').value);
   if(!isNaN(newChairRate)&&newChairRate>0) S.settings.infomedicsPerChair=newChairRate;
   if(!isNaN(newSegDelay)&&newSegDelay>0) S.settings.segurosDelay=newSegDelay;
+  const newThreshold=parseFloat(document.getElementById('set-alert-threshold').value)||0;
+  S.settings.alertThreshold=newThreshold;
+  const newMonthlyTarget=parseFloat(document.getElementById('set-monthly-target').value)||0;
+  if(!S.targets)S.targets={monthly:0};
+  S.targets.monthly=newMonthlyTarget;
 
   // 2. Firebase config — only process if the textarea was actually CHANGED (differs from stored)
   const fbRaw=document.getElementById('set-fb-config').value.trim();
@@ -2483,6 +2577,7 @@ function updateKpis(){
 
   updateAlerts();
   renderPendingPayments();
+  renderTargetProgress();
   if(currentTab==='projections'&&!projBuilt) buildProjections();
 }
 
@@ -2520,12 +2615,199 @@ function updateAlerts(){
   if(overdueRec.length)
     alerts.push(`<span style="font-size:12px;font-weight:700;color:var(--warn)">🔔 ${overdueRec.length} pagamento${overdueRec.length>1?'s':''} recorrente${overdueRec.length>1?'s':''} em atraso</span>`);
 
+  // 4. Balance below threshold
+  const threshold=S.settings?.alertThreshold||0;
+  if(threshold>0&&getTotalSaldo()<threshold)
+    alerts.push(`<span style="font-size:12px;font-weight:700;color:var(--danger)">💰 Saldo total abaixo do mínimo configurado (${fmt(threshold)})</span>`);
+
+  // 5. Monthly revenue target tracking
+  const target=S.targets?.monthly||0;
+  const nowD=new Date();
+  if(target>0&&nowD.getDate()>15){
+    const cm2=curMonth();
+    const realIn=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===cm2&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
+    const pct=realIn/target*100;
+    if(pct<50)
+      alerts.push(`<span style="font-size:12px;font-weight:700;color:var(--danger)">🎯 Receita de ${mLabel(cm2)} está em ${Math.round(pct)}% da meta (${fmt(realIn)} / ${fmt(target)})</span>`);
+    else if(pct<80)
+      alerts.push(`<span style="font-size:12px;font-weight:600;color:var(--warn)">🎯 Receita de ${mLabel(cm2)} em ${Math.round(pct)}% da meta</span>`);
+  }
+
   if(alerts.length){
     bar.style.display='flex';
     bar.innerHTML=alerts.join('<span style="color:#fca5a5;margin:0 4px">·</span>');
   } else {
     bar.style.display='none';
   }
+}
+
+// ─── Target progress ───────────────────────────────────────────────
+function saveTarget(){
+  if(!S.targets)S.targets={monthly:0};
+  S.targets.monthly=parseFloat(document.getElementById('target-input').value)||0;
+  save(); renderTargetProgress(); updateAlerts();
+}
+function renderTargetProgress(){
+  const el=document.getElementById('target-progress-content');
+  const lbl=document.getElementById('target-month-label');
+  const inp=document.getElementById('target-input');
+  if(!el) return;
+  const cm=curMonth();
+  if(lbl) lbl.textContent=mLabelFull(cm);
+  const target=S.targets?.monthly||0;
+  if(inp&&parseFloat(inp.value||0)!==target) inp.value=target||'';
+  const realIn=(S.entries||[]).filter(e=>e.type==='entrada'&&mKey(e.date)===cm&&e.clinic!=='holding').reduce((s,e)=>s+e.amount,0);
+  const remIn=getRemainingIncomeForMonth(cm);
+  const totalExpected=realIn+remIn;
+  if(target<=0){
+    el.innerHTML=`<div style="font-size:12px;color:var(--text-sm);padding:6px 0">Define uma meta mensal acima para ver o progresso.</div>`;
+    return;
+  }
+  const pctReal=Math.min(100,Math.round(realIn/target*100));
+  const pctExpected=Math.min(100,Math.round(totalExpected/target*100));
+  const color=pctReal>=100?'var(--success)':pctReal>=80?'#f59e0b':'var(--danger)';
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+      <span>Recebido: <strong style="color:var(--success)">${fmt(realIn)}</strong></span>
+      <span>Previsto total: <strong style="color:#7c3aed">${fmt(totalExpected)}</strong></span>
+      <span>Meta: <strong>${fmt(target)}</strong></span>
+    </div>
+    <div style="background:#f1f5f9;border-radius:999px;height:16px;overflow:hidden;position:relative">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${pctExpected}%;background:#a5f3fc40;border-radius:999px;transition:width .4s"></div>
+      <div style="position:absolute;left:0;top:0;height:100%;width:${pctReal}%;background:${color};border-radius:999px;transition:width .4s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+        <span style="font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${pctReal}%</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text-sm);margin-top:5px">
+      ${pctReal>=100?'✅ Meta atingida!':pctExpected>=100?'📈 Com o previsto a meta será atingida':pctExpected>=80?'📊 Perto da meta com o previsto':'⚠️ Meta em risco — reforça a faturação'}
+      ${pctReal<100&&target>realIn?` · Faltam ${fmt(target-realIn)} para completar`:''}
+    </div>`;
+}
+
+// ─── "E se?" extra chairs ───────────────────────────────────────────
+let extraChairs=0;
+function updateExtraChairs(val){
+  extraChairs=parseInt(val)||0;
+  document.getElementById('extra-chairs-label').textContent=extraChairs;
+  const perMonth=extraChairs*chairRate();
+  document.getElementById('extra-chairs-val').textContent=`+ ${fmt(perMonth)}/mês`;
+  const yearImpact=perMonth*12;
+  const el=document.getElementById('extra-chairs-year');
+  if(el) el.textContent=extraChairs>0?`≈ ${fmt(yearImpact)} extra/ano`:'';
+  projBuilt=false; buildProjections();
+}
+
+// ─── Tendências ────────────────────────────────────────────────────
+let trendIncomeChartInst=null, trendChairsChartInst=null;
+function renderTrends(){
+  // Collect last 12 real months
+  const months=[];
+  const now=new Date();
+  for(let i=11;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  const byM=buildByMonth();
+  // KPIs: last 3 months
+  const real3=months.slice(-3).filter(k=>byM[k]);
+  const avg3in=real3.length?real3.reduce((s,k)=>s+byM[k].in,0)/real3.length:0;
+  const avg3out=real3.length?real3.reduce((s,k)=>s+byM[k].out,0)/real3.length:0;
+  const margin3=avg3in>0?Math.round((avg3in-avg3out)/avg3in*100):0;
+  document.getElementById('trend-avg-in3').textContent=fmt(avg3in);
+  document.getElementById('trend-avg-out3').textContent=fmt(avg3out);
+  document.getElementById('trend-margin3').textContent=margin3+'%';
+  document.getElementById('trend-margin3').style.color=margin3>=0?'var(--success)':'var(--danger)';
+
+  // YoY: compare this year vs last year (same months)
+  const curY=now.getFullYear();
+  const prevY=curY-1;
+  const curYMonths=months.filter(k=>k.startsWith(curY+'')&&byM[k]);
+  const prevYMonths=curYMonths.map(k=>k.replace(curY+'',prevY+'')).filter(k=>byM[k]);
+  const curYIn=curYMonths.reduce((s,k)=>s+byM[k].in,0);
+  const prevYIn=prevYMonths.reduce((s,k)=>s+(byM[k]?.in||0),0);
+  const yoyEl=document.getElementById('trend-yoy');
+  if(prevYIn>0&&curYIn>0){
+    const yoyPct=Math.round((curYIn-prevYIn)/prevYIn*100);
+    yoyEl.textContent=(yoyPct>=0?'+':'')+yoyPct+'%';
+    yoyEl.style.color=yoyPct>=0?'var(--success)':'var(--danger)';
+  } else { yoyEl.textContent='—'; yoyEl.style.color='var(--text-sm)'; }
+
+  // Chart 1: income vs expenses 12M
+  const labels=months.map(k=>mLabel(k));
+  const inData=months.map(k=>byM[k]?byM[k].in:null);
+  const outData=months.map(k=>byM[k]?byM[k].out:null);
+  const netData=months.map(k=>byM[k]?byM[k].in-byM[k].out:null);
+  const c1=document.getElementById('trendIncomeChart');
+  if(c1){
+    if(trendIncomeChartInst){trendIncomeChartInst.destroy();trendIncomeChartInst=null;}
+    trendIncomeChartInst=new Chart(c1.getContext('2d'),{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Receitas',data:inData,backgroundColor:'#059669aa',borderColor:'#059669',borderWidth:1,borderRadius:4},
+        {label:'Despesas',data:outData,backgroundColor:'#ef4444aa',borderColor:'#ef4444',borderWidth:1,borderRadius:4},
+        {label:'Resultado',data:netData,type:'line',borderColor:'#7c3aed',backgroundColor:'transparent',pointRadius:4,pointBackgroundColor:'#7c3aed',tension:0.3,borderWidth:2}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}}}}
+    });
+  }
+
+  // Chart 2: chairs per clinic 12M
+  const chairData=INFOMEDICS_CLINICS.map(cId=>({
+    label:CLINIC_NAMES[cId],
+    data:months.map(k=>getMonthChairs(cId,k)||null),
+    borderColor:CLINIC_COLORS[cId],
+    backgroundColor:CLINIC_COLORS[cId]+'22',
+    pointRadius:3,tension:0.3,borderWidth:2,fill:false
+  }));
+  const c2=document.getElementById('trendChairsChart');
+  if(c2){
+    if(trendChairsChartInst){trendChairsChartInst.destroy();trendChairsChartInst=null;}
+    trendChairsChartInst=new Chart(c2.getContext('2d'),{
+      type:'line',data:{labels,datasets:chairData},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'cadeiras'}}}}
+    });
+  }
+
+  // Comparison table
+  const tbl=document.getElementById('trend-comparison-table');
+  if(!tbl) return;
+  const rows=months.map((k,i)=>{
+    const d=byM[k];
+    if(!d) return `<tr><td style="color:var(--text-sm)">${mLabel(k)}</td><td colspan="6" style="text-align:center;color:var(--text-sm);font-size:12px">sem dados</td></tr>`;
+    const prevK=months[i-1];
+    const prevD=prevK&&byM[prevK];
+    const momDiff=prevD?d.in-prevD.in:null;
+    const momPct=prevD&&prevD.in>0?Math.round((d.in-prevD.in)/prevD.in*100):null;
+    const prevYK=k.slice(0,4)-1+k.slice(4);
+    const prevYD=byM[prevYK];
+    const yoyDiff=prevYD?d.in-prevYD.in:null;
+    const yoyPct=prevYD&&prevYD.in>0?Math.round((d.in-prevYD.in)/prevYD.in*100):null;
+    const net=d.in-d.out;
+    const margin=d.in>0?Math.round(net/d.in*100):0;
+    const momStr=momPct!=null?`<span style="color:${momPct>=0?'var(--success)':'var(--danger)'}">${momPct>=0?'+':''}${momPct}%</span>`:'—';
+    const yoyStr=yoyPct!=null?`<span style="color:${yoyPct>=0?'var(--success)':'var(--danger)'}">${yoyPct>=0?'+':''}${yoyPct}%</span>`:'—';
+    return `<tr>
+      <td style="font-weight:600">${mLabel(k)}</td>
+      <td style="text-align:right;color:var(--success)">${fmt(d.in)}</td>
+      <td style="text-align:right">${momStr}</td>
+      <td style="text-align:right">${yoyStr}</td>
+      <td style="text-align:right;color:var(--danger)">${fmt(d.out)}</td>
+      <td style="text-align:right;font-weight:700;color:${net>=0?'var(--success)':'var(--danger)'}">${fmtSigned(net)}</td>
+      <td style="text-align:right;color:${margin>=0?'var(--primary)':'var(--danger)'}">${margin}%</td>
+    </tr>`;
+  });
+  tbl.innerHTML=rows.join('');
+}
+function buildByMonth(){
+  // Build byMonth from real S.entries (excluding holding) — same logic as projections
+  const bm={};
+  (S.entries||[]).filter(e=>e.clinic!=='holding').forEach(e=>{
+    const k=mKey(e.date);
+    if(!bm[k])bm[k]={in:0,out:0};
+    if(e.type==='entrada')bm[k].in+=e.amount;
+    else if(e.type==='saida')bm[k].out+=e.amount;
+  });
+  return bm;
 }
 
 function renderPendingPayments(){
@@ -2685,6 +2967,31 @@ function renderInfomedicsPanel(){
       avgBar.style.display='none';
     }
   }
+
+  // Chair utilization stats vs prev months
+  const statsEl=document.getElementById('info-chair-stats');
+  if(statsEl){
+    const getTotalChairsForMonth=k=>INFOMEDICS_CLINICS.reduce((s,c)=>s+getMonthChairs(c,k),0);
+    const [iy,im]=infoMonth.split('-').map(Number);
+    const prevMonthKey=`${im===1?iy-1:iy}-${String(im===1?12:im-1).padStart(2,'0')}`;
+    const prev2MonthKey=(()=>{const d=new Date(iy,im-3,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+    const prevChairs=getTotalChairsForMonth(prevMonthKey);
+    const prev2Chairs=getTotalChairsForMonth(prev2MonthKey);
+    const avg3=Math.round((totalChairs+prevChairs+prev2Chairs)/3);
+    const diff=totalChairs-prevChairs;
+    const trend=diff>0?`<span style="color:var(--success)">▲ ${diff}</span>`:diff<0?`<span style="color:var(--danger)">▼ ${Math.abs(diff)}</span>`:`<span style="color:var(--text-sm)">= igual</span>`;
+    statsEl.innerHTML=`
+      <span style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:4px 10px">
+        📅 Mês ant. <strong>${prevChairs} cad.</strong> ${totalChairs>0||prevChairs>0?trend:''}
+      </span>
+      <span style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:4px 10px">
+        📊 Média 3M: <strong>${avg3} cad.</strong>
+      </span>
+      ${totalChairs>0&&avg3>0?`<span style="background:${totalChairs>=avg3?'#f0fdf4':'#fef2f2'};border:1px solid ${totalChairs>=avg3?'#86efac':'#fca5a5'};border-radius:8px;padding:4px 10px;color:${totalChairs>=avg3?'#166534':'#991b1b'}">
+        ${totalChairs>=avg3?'✅ Acima da média':'⚠️ Abaixo da média'}
+      </span>`:''}`;
+  }
+
   renderExpectedPayments();
 }
 
@@ -4500,7 +4807,10 @@ function renderOutCalendar(){
     // Subtract ALL unpaid outgoings — overdue items still reduce the projected balance
     const unpaidRec=items.filter(it=>!it.paid).reduce((s,it)=>s+it.amount,0);
     const unpaidFac=facs.reduce((s,f)=>s+f.amount,0);
-    const dayOut=unpaidRec+unpaidFac;
+    // Ad-hoc entries: subtract for current/future days (past already in saldo)
+    const adhocDay=adHocMap[day]||[];
+    const dayAdhoc=!isPast?adhocDay.reduce((s,e)=>s+e.amount,0):0;
+    const dayOut=unpaidRec+unpaidFac+dayAdhoc;
     if(dayOut>0) runBal-=dayOut;
     // Always record last day; also record any day with outgoings
     if(dayOut>0||day===daysInMonth) runBalMap[day]=runBal;
@@ -5095,7 +5405,7 @@ function buildProjections(){
   });
 
   const balRows=[`<tr style="background:var(--primary)11;border-bottom:2px solid var(--primary)33">
-    <td colspan="7" style="font-weight:700;color:var(--primary)">💰 Saldo no início de ${projYear===appStartYear?mLabel(curMon):projYear}</td>
+    <td colspan="8" style="font-weight:700;color:var(--primary)">💰 Saldo no início de ${projYear===appStartYear?mLabel(curMon):projYear}</td>
     <td style="text-align:right;font-weight:800;font-size:16px;color:var(--primary)">${fmt(runBal)}</td>
   </tr>`];
 
@@ -5116,14 +5426,14 @@ function buildProjections(){
       inAmt=byMonth[k].in;outAmt=byMonth[k].out;isPlanned=false;
       inLabel='';outLabel='';
     } else if(isCur){
-      inAmt=getRemainingIncomeForMonth(k)*scenarioFactor;
+      inAmt=getRemainingIncomeForMonth(k)*scenarioFactor+(extraChairs||0)*chairRate();
       outAmt=getRemainingOutForMonth(k)+overdueAmt; // includes overdue carried from past months
       isPlanned=true;
       inLabel=realInSoFar>0?`<div style="font-size:10px;color:var(--text-sm)">já entrou: ${fmt(realInSoFar)}</div>`:'';
       const overdueLabel=overdueAmt>0?`<div style="font-size:10px;color:#dc2626;font-weight:600">⚠ em atraso: ${fmt(overdueAmt)}</div>`:'';
       outLabel=(monthSummary.paidTotal>0?`<div style="font-size:10px;color:var(--text-sm)">já saiu: ${fmt(monthSummary.paidTotal)}</div>`:'')+overdueLabel;
     } else {
-      inAmt=getRemainingIncomeForMonth(k)*scenarioFactor;outAmt=getRemainingOutForMonth(k);isPlanned=true;
+      inAmt=(getRemainingIncomeForMonth(k)+(extraChairs||0)*chairRate())*scenarioFactor;outAmt=getRemainingOutForMonth(k);isPlanned=true;
       inLabel='';outLabel='';
     }
     const net=inAmt-outAmt;
@@ -5135,6 +5445,15 @@ function buildProjections(){
       :isPlanned
         ?'<span style="font-size:9px;border:1px dashed #a78bfa;border-radius:3px;padding:1px 4px;color:#7c3aed;margin-left:4px">previsto</span>'
         :'<span style="font-size:9px;border:1px solid #059669;border-radius:3px;padding:1px 4px;color:#059669;margin-left:4px">real</span>';
+    // YoY comparison
+    const prevYearKey=`${parseInt(k)-1}${k.slice(4)}`;
+    const prevYearReal=byMonth[prevYearKey];
+    let yoyCell='<td style="text-align:right;font-size:12px;color:var(--text-sm)">—</td>';
+    if(prevYearReal&&prevYearReal.in>0){
+      const cmpIn=isReal?inAmt:inAmt;
+      const yoyPct=Math.round((cmpIn-prevYearReal.in)/prevYearReal.in*100);
+      yoyCell=`<td style="text-align:right;font-size:12px;font-weight:700;color:${yoyPct>=0?'var(--success)':'var(--danger)'}">${yoyPct>=0?'+':''}${yoyPct}%</td>`;
+    }
     balRows.push(`<tr style="${bgStyle}">
       <td><span style="${labelStyle}">${mLabel(k)}</span>${planTag}</td>
       <td style="text-align:right;color:var(--success);font-weight:600">${fmt(inAmt)}${inLabel}</td>
@@ -5143,6 +5462,7 @@ function buildProjections(){
       <td style="text-align:right;color:var(--text-sm);font-size:12px;${planOutrosK>0&&!isReal?'color:#7c3aed;font-weight:600':''}">${isReal?'—':planOutrosK>0?fmt(planOutrosK):'—'}</td>
       <td style="text-align:right;color:var(--danger);font-weight:600">− ${fmt(outAmt)}${outLabel}</td>
       <td style="text-align:right;font-weight:700;color:${net>=0?'var(--success)':'var(--danger)'}">${fmtSigned(net)}</td>
+      ${yoyCell}
       <td style="text-align:right;font-weight:800;font-size:15px;color:${runBal>=0?'var(--primary)':'var(--danger)'}">${fmt(runBal)}</td>
     </tr>`);
   }
@@ -5874,6 +6194,8 @@ function init(){
   renderInfomedicsPanel();
   renderSegurosPanel();
   renderOutCalendar();
+  renderTargetProgress();
+  updateKpis();
   // facturas tab renders on demand (renderFacturas called on tab switch)
 }
 init();
