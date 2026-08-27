@@ -4939,15 +4939,41 @@ function openOutDayPopup(ev,dateStr,dayNum,items,adhoc,isDue,facs=[]){
       </div>`;
     }).join('')}`;
 
+  const adhocCatOpts=getOutCategories().map(c=>`<option>${c}</option>`).join('');
+  const adhocAccOpts=ACCOUNTS.filter(a=>a.cId!=='holding').map(a=>`<option value="${a.id}">${a.clinic} · ${a.bank}</option>`).join('');
   const adhocHtml=adhoc.length===0?'':`
     <div style="font-size:10px;font-weight:700;color:var(--text-sm);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 6px">Saídas Pontuais</div>
-    ${adhoc.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg);border-radius:7px;margin-bottom:3px">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600">${e.category}</div>
-        <div style="font-size:10px;color:var(--text-sm)">${accLabel(e.account)}${e.notes?' · '+e.notes:''}</div>
+    ${adhoc.map(e=>`
+    <div style="margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg);border-radius:7px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600">${e.category}</div>
+          <div style="font-size:10px;color:var(--text-sm)">${accLabel(e.account)}${e.notes?' · '+e.notes:''}</div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--danger)">${fmt(e.amount)}</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleAdhocEdit('${e.id}')" style="font-size:10px;padding:2px 6px" title="Editar">✎</button>
+        <button class="btn btn-ghost btn-sm" onclick="askDel('${e.id}')" style="font-size:10px;padding:2px 6px">×</button>
       </div>
-      <div style="font-size:12px;font-weight:700;color:var(--danger)">${fmt(e.amount)}</div>
-      <button class="btn btn-ghost btn-sm" onclick="askDel('${e.id}')" style="font-size:10px;padding:2px 6px">×</button>
+      <div id="adhoc-edit-${e.id}" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:8px;margin-top:3px">
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;gap:5px">
+            <input type="number" id="adhoc-edit-amt-${e.id}" value="${e.amount}" placeholder="€ valor" min="0" step="0.01"
+              style="flex:1;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px">
+            <input type="text" id="adhoc-edit-notes-${e.id}" value="${(e.notes||'').replace(/'/g,'&#39;')}" placeholder="Notas"
+              style="flex:1;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px">
+          </div>
+          <select id="adhoc-edit-cat-${e.id}" style="border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px">
+            ${getOutCategories().map(c=>`<option${c===e.category?' selected':''}>${c}</option>`).join('')}
+          </select>
+          <select id="adhoc-edit-acc-${e.id}" style="border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px">
+            ${ACCOUNTS.filter(a=>a.cId!=='holding').map(a=>`<option value="${a.id}"${a.id===e.account?' selected':''}>${a.clinic} · ${a.bank}</option>`).join('')}
+          </select>
+          <div style="display:flex;gap:5px">
+            <button class="btn btn-primary btn-sm" onclick="saveAdhocEdit('${e.id}')" style="flex:1;font-size:12px">Guardar</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleAdhocEdit('${e.id}')" style="flex:1;font-size:12px">Cancelar</button>
+          </div>
+        </div>
+      </div>
     </div>`).join('')}`;
 
   popup.innerHTML=`
@@ -5049,6 +5075,22 @@ function outDayAnnul(recId,mk){
     closeOutDayPopup();
     renderOutCalendar();renderEntryTable('saida');updateKpis();projBuilt=false;
   }
+}
+function toggleAdhocEdit(id){
+  const el=document.getElementById('adhoc-edit-'+id);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+function saveAdhocEdit(id){
+  const e=S.entries.find(x=>x.id===id);
+  if(!e) return;
+  const amt=parseFloat(document.getElementById('adhoc-edit-amt-'+id).value)||0;
+  if(amt<=0){alert('Valor inválido.');return;}
+  e.amount=amt;
+  e.category=document.getElementById('adhoc-edit-cat-'+id).value;
+  e.account=document.getElementById('adhoc-edit-acc-'+id).value;
+  e.notes=document.getElementById('adhoc-edit-notes-'+id).value.trim();
+  save(); closeOutDayPopup();
+  renderOutCalendar(); renderEntryTable('saida'); updateKpis(); projBuilt=false;
 }
 function addOutAdhoc(dateStr){
   const amount=parseFloat(document.getElementById('padhoc-amt').value)||0;
