@@ -940,6 +940,47 @@ tr:hover td{background:#f8fafc}
       </div>
     </div>
   </div>
+  <!-- ── A Verwerken ── -->
+  <div class="card" style="border-left:4px solid #f59e0b">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>📝 Pago Privado · A Verwerken</span>
+      <span style="font-size:12px;font-weight:400;color:var(--text-sm)">Despesas pagas do bolso que deviam ser zakelijk</span>
+    </div>
+    <!-- Add form -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:105px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Data</label>
+        <input type="date" id="zak-date"
+          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      </div>
+      <div style="flex:2.5;min-width:150px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Descrição</label>
+        <input type="text" id="zak-desc" placeholder="ex: gasolina, material, restaurante..."
+          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      </div>
+      <div style="flex:1;min-width:95px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Valor (€)</label>
+        <input type="number" id="zak-amt" placeholder="0.00" step="0.01" min="0"
+          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      </div>
+      <div style="flex:1.5;min-width:120px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sm);display:block;margin-bottom:4px">Empresa</label>
+        <select id="zak-clinic"
+          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card)">
+          <option value="">— qualquer —</option>
+          <option value="Centrum">Centrum</option>
+          <option value="Castor">Castor</option>
+          <option value="Sloten">Sloten</option>
+          <option value="LT">LT</option>
+          <option value="Holding">Holding</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addZakelijkTodo()" style="padding:7px 14px;margin-bottom:1px;white-space:nowrap">＋ Adicionar</button>
+    </div>
+    <div id="zak-list"></div>
+    <div id="zak-totals"></div>
+  </div>
+
   </div><!-- /priv-sub-saldos -->
 
   <!-- ── Dividendos / Movimentos ── -->
@@ -4115,6 +4156,7 @@ function loadPrivado(){
   if(!Array.isArray(P.injections))P.injections=[];
   if(!Array.isArray(P.recurringItems))P.recurringItems=[];
   if(!P.recurringPaid)P.recurringPaid={};
+  if(!Array.isArray(P.zakelijkTodo))P.zakelijkTodo=[];
 }
 function savePrivado(){
   // Read current input values on every save
@@ -4194,6 +4236,7 @@ function renderPrivado(){
 
   // Always render recurring checklist alongside
   renderPrivRecurring();
+  renderZakelijkTodo();
 }
 function addPrivExp(){
   const name=document.getElementById('priv-exp-name').value.trim();
@@ -4212,6 +4255,82 @@ function deletePrivExp(id){
   localStorage.setItem(PRIV_KEY,JSON.stringify(P));
   fbSavePrivado();
   renderPrivado();
+}
+// ─── A VERWERKEN (privado → zakelijk) ───
+function addZakelijkTodo(){
+  const date=document.getElementById('zak-date').value||today();
+  const desc=document.getElementById('zak-desc').value.trim();
+  const amount=parseFloat(document.getElementById('zak-amt').value)||0;
+  const clinic=document.getElementById('zak-clinic').value;
+  if(!desc||!amount){alert('Preenche pelo menos a descrição e o valor.');return;}
+  if(!Array.isArray(P.zakelijkTodo))P.zakelijkTodo=[];
+  P.zakelijkTodo.unshift({id:uid(),date,desc,amount,clinic,done:false});
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));fbSavePrivado();
+  document.getElementById('zak-desc').value='';
+  document.getElementById('zak-amt').value='';
+  renderZakelijkTodo();
+}
+function toggleZakelijkDone(id){
+  const item=P.zakelijkTodo.find(x=>x.id===id);
+  if(!item)return;
+  item.done=!item.done;
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));fbSavePrivado();
+  renderZakelijkTodo();
+}
+function deleteZakelijkTodo(id){
+  if(!confirm('Eliminar este item?'))return;
+  P.zakelijkTodo=(P.zakelijkTodo||[]).filter(x=>x.id!==id);
+  localStorage.setItem(PRIV_KEY,JSON.stringify(P));fbSavePrivado();
+  renderZakelijkTodo();
+}
+function renderZakelijkTodo(){
+  const listEl=document.getElementById('zak-list');
+  const totEl=document.getElementById('zak-totals');
+  if(!listEl)return;
+  const items=P.zakelijkTodo||[];
+  if(!items.length){
+    listEl.innerHTML='<p style="font-size:13px;color:var(--text-sm);font-style:italic;margin-bottom:8px">Nenhum item ainda. Vai adicionando à medida que te lembras.</p>';
+    if(totEl)totEl.innerHTML='';
+    return;
+  }
+  const pending=items.filter(x=>!x.done);
+  const done=items.filter(x=>x.done);
+  const pendingTotal=pending.reduce((s,x)=>s+x.amount,0);
+  const MONTHS_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  function rowHTML(item){
+    const isDone=!!item.done;
+    const d=item.date?new Date(item.date+'T12:00:00'):null;
+    const dLabel=d?`${d.getDate()} ${MONTHS_PT[d.getMonth()]} ${d.getFullYear()}`:'—';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);${isDone?'opacity:.5':''}">
+      <span style="font-size:11px;color:var(--text-sm);min-width:80px;white-space:nowrap">${dLabel}</span>
+      ${item.clinic?`<span style="font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;white-space:nowrap;color:var(--text-sm)">${item.clinic}</span>`:''}
+      <span style="flex:1;font-size:13px;font-weight:600;${isDone?'text-decoration:line-through':''}">${item.desc}</span>
+      <span style="font-size:14px;font-weight:700;color:${isDone?'var(--text-sm)':'#f59e0b'};white-space:nowrap">${fmt(item.amount)}</span>
+      <button onclick="toggleZakelijkDone('${item.id}')" title="${isDone?'Repor como pendente':'Marcar como verwerkt'}"
+        style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;cursor:pointer;border:1px solid ${isDone?'#16a34a':'#f59e0b'};background:${isDone?'#dcfce7':'#fffbeb'};color:${isDone?'#16a34a':'#b45309'};white-space:nowrap">
+        ${isDone?'✓ Verwerkt':'Verwerken'}
+      </button>
+      <button onclick="deleteZakelijkTodo('${item.id}')"
+        style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-sm);padding:0 4px">×</button>
+    </div>`;
+  }
+  let html='';
+  if(pending.length) html+=pending.map(rowHTML).join('');
+  if(done.length){
+    html+=`<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--text-sm);padding-bottom:4px;border-bottom:1px solid var(--border)">✓ Já verwerkt</div>`;
+    html+=done.map(rowHTML).join('');
+  }
+  listEl.innerHTML=html;
+  if(totEl){
+    totEl.innerHTML=pending.length
+      ?`<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:2px solid #f59e0b;margin-top:4px">
+          <span style="font-size:13px;font-weight:600;color:#92400e">Por verwerken (${pending.length} item${pending.length!==1?'s':''})</span>
+          <span style="font-size:17px;font-weight:800;color:#f59e0b">${fmt(pendingTotal)}</span>
+        </div>`
+      :'<div style="padding-top:8px;font-size:13px;color:var(--success);font-weight:600">✓ Tudo verwerkt!</div>';
+  }
+  // Set date input to today if empty
+  const dateEl=document.getElementById('zak-date');if(dateEl&&!dateEl.value)dateEl.value=today();
 }
 function addPrivAdhoc(){
   const date=document.getElementById('priv-adhoc-date').value;
